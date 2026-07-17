@@ -3,6 +3,11 @@
 namespace Config;
 
 use CodeIgniter\Config\BaseService;
+use CodeIgniter\Settings\Config\Settings as SettingsConfig;
+use CodeIgniter\Settings\Settings;
+use CodeIgniter\Shield\Auth;
+use CodeIgniter\Shield\Authentication\JWTManager;
+use CodeIgniter\Shield\Authentication\Passwords;
 
 /**
  * Services Configuration file.
@@ -19,14 +24,39 @@ use CodeIgniter\Config\BaseService;
  */
 class Services extends BaseService
 {
-    /*
-     * public static function example($getShared = true)
-     * {
-     *     if ($getShared) {
-     *         return static::getSharedInstance('example');
-     *     }
-     *
-     *     return new \CodeIgniter\Example();
-     * }
-     */
+    public static function auth(bool $getShared = true): Auth
+    {
+        if ($getShared) {
+            return static::getSharedInstance('auth');
+        }
+
+        return \CodeIgniter\Shield\Config\Services::auth(false);
+    }
+
+    public static function passwords(bool $getShared = true): Passwords
+    {
+        if ($getShared) {
+            return static::getSharedInstance('passwords');
+        }
+
+        return \CodeIgniter\Shield\Config\Services::passwords(false);
+    }
+
+    public static function jwtmanager(bool $getShared = true): JWTManager
+    {
+        if ($getShared) {
+            return static::getSharedInstance('jwtmanager');
+        }
+
+        return \CodeIgniter\Shield\Config\Services::jwtmanager(false);
+    }
+
+    public static function settings(?SettingsConfig $config = null, bool $getShared = true): Settings
+    {
+        if ($getShared) {
+            return static::getSharedInstance('settings', $config);
+        }
+
+        return \CodeIgniter\Settings\Config\Services::settings($config, false);
+    }
 }
