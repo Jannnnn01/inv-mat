@@ -1,21 +1,34 @@
-# the composer package lock file and install directory
-# Commit your application's lock file http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file
-# You may choose to ignore a library lock file http://getcomposer.org/doc/02-libraries.md#lock-file
-# /composer.lock
-/fuel/vendor
+# Dependencias
+/vendor/
+/node_modules/
 
-# the fuelphp document
-/docs/
+# Configuracion local y secretos
+/.env
+/.env.*
+!/.env.example
 
-# you may install these packages with `oil package`.
-# http://fuelphp.com/docs/packages/oil/package.html
-# /fuel/packages/auth/
-# /fuel/packages/email/
-# /fuel/packages/oil/
-# /fuel/packages/orm/
-# /fuel/packages/parser/
+# Artefactos generados
+/public/assets/build/
+/build/
+/coverage/
+/.phpunit.cache/
+npm-debug.log*
 
-# dynamically generated files
-/fuel/app/logs/*/*/*
-/fuel/app/cache/*/*
-/fuel/app/config/crypt.php
+# CodeIgniter writable (conservar archivos de proteccion)
+/writable/cache/*
+!/writable/cache/index.html
+/writable/debugbar/*
+!/writable/debugbar/index.html
+/writable/logs/*
+!/writable/logs/index.html
+/writable/session/*
+!/writable/session/index.html
+/writable/uploads/*
+!/writable/uploads/index.html
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+Desktop.ini
+/.idea/
+/.vscode/
