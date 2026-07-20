@@ -55,4 +55,11 @@ final class PublicRoutesTest extends CIUnitTestCase
 
         $this->delete('/catalogos/materiales/1');
     }
+
+    public function testInventoryHistoryHasNoDeleteEndpoint(): void
+    {
+        $this->expectException(PageNotFoundException::class);
+
+        $this->delete('/inventario/movimientos/1');
+    }
 }

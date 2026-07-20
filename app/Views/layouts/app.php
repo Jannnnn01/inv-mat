@@ -20,6 +20,13 @@
                 <?php if (auth()->user()?->can('materials.view')): ?>
                     <li class="nav-item"><a class="nav-link" href="<?= url_to('materials') ?>">Materiales</a></li>
                 <?php endif ?>
+                <?php if (auth()->user()?->can('stock.view')): ?>
+                    <li class="nav-item"><a class="nav-link" href="<?= url_to('inventory-stocks') ?>">Existencias</a></li>
+                <?php endif ?>
+                <?php if (auth()->user()?->can('inventory.movements.view')): ?>
+                    <li class="nav-item"><a class="nav-link" href="<?= url_to('inventory-movements') ?>">Movimientos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="<?= url_to('inventory-requests') ?>">Solicitudes</a></li>
+                <?php endif ?>
                 <?php if (auth()->user()?->can('categories.view')): ?>
                     <li class="nav-item"><a class="nav-link" href="<?= url_to('categories') ?>">Categorías</a></li>
                 <?php endif ?>
