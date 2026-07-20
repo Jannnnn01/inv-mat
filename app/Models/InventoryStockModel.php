@@ -10,6 +10,6 @@ final class InventoryStockModel extends BaseCatalogModel
     protected $primaryKey = 'id';
     protected $allowedFields = [
         'material_id', 'warehouse_id', 'quantity', 'valued_quantity',
-        'average_unit_cost', 'version',
+        'average_unit_cost', 'total_value', 'version',
     ];
 }

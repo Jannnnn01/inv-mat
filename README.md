@@ -78,6 +78,9 @@ Las rutas principales de autenticacion son:
 - `/catalogos/proveedores`: proveedores.
 - `/catalogos/unidades`: unidades de medida.
 - `/catalogos/bodegas`: bodegas, solo para administradores.
+- `/inventario/existencias`: stock físico por material y bodega.
+- `/inventario/movimientos`: entradas, salidas e historial inmutable.
+- `/inventario/solicitudes`: solicitudes de ajustes y reversiones.
 
 Para Apache/XAMPP o Laragon, el document root debe apuntar exclusivamente a `public/`.
 
@@ -88,6 +91,7 @@ composer validate --strict
 composer audit
 composer test
 php spark routes
+php spark invmat:inventory:smoke
 npm run build
 npm audit
 ```
@@ -108,9 +112,14 @@ npm audit
 - Catálogos sin endpoints de eliminación física.
 - Existencias separadas por material y bodega mediante `NUMERIC(14,3)`.
 - Validación de cantidades enteras para materiales no fraccionables.
+- Movimientos y detalles protegidos contra actualización o eliminación mediante PostgreSQL.
+- Bloqueo de existencias y transacciones atómicas para impedir stock negativo.
+- Costo promedio ponderado con existencia física y valorada separadas.
+- Entradas sin costo almacenadas como pendientes de valoración y con motivo obligatorio.
+- Ajustes y reversiones con solicitante y aprobador diferentes.
 - Errores internos ocultos en produccion.
 - Configuracion sensible mediante variables de entorno.
 
 ## Estado
 
-Fases 1, 2 y 3 implementadas: base técnica, PostgreSQL, autenticación, roles, usuarios, bodegas, unidades, categorías, proveedores, materiales y estructura de existencias por bodega. Los movimientos de inventario se incorporarán en la siguiente fase.
+Fases 1 a 4 implementadas: base técnica, autenticación, roles, usuarios, catálogos, existencias, entradas, salidas, movimientos inmutables y solicitudes de ajuste o reversión. Permanecen pendientes adjuntos, auditoría general, reportes, despliegue y operación productiva.

@@ -41,6 +41,20 @@ final class CatalogRulesTest extends CIUnitTestCase
         $this->assertContains('units.view', $groups->matrix['viewer']);
     }
 
+    public function testInventoryPermissionsEnforceSeparationOfDuties(): void
+    {
+        $groups = new AuthGroups();
+
+        $this->assertContains('inventory.entries.create', $groups->matrix['warehouse']);
+        $this->assertContains('inventory.exits.create', $groups->matrix['warehouse']);
+        $this->assertContains('inventory.adjustments.request', $groups->matrix['warehouse']);
+        $this->assertContains('inventory.reversals.request', $groups->matrix['warehouse']);
+        $this->assertNotContains('inventory.adjustments.approve', $groups->matrix['warehouse']);
+        $this->assertNotContains('inventory.reversals.approve', $groups->matrix['warehouse']);
+        $this->assertNotContains('financial.view', $groups->matrix['warehouse']);
+        $this->assertNotContains('inventory.entries.create', $groups->matrix['viewer']);
+    }
+
     public function testUnknownCatalogIsRejectedBeforeDatabaseAccess(): void
     {
         $this->expectException(\InvalidArgumentException::class);

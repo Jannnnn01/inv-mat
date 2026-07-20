@@ -90,3 +90,19 @@ $routes->group('catalogos', ['filter' => $catalogBaseFilters], static function (
     $routes->post('materiales/(:num)', 'Catalogs\MaterialController::update/$1', ['as' => 'materials-update', 'filter' => 'permission:materials.update']);
     $routes->post('materiales/(:num)/estado', 'Catalogs\MaterialController::toggle/$1', ['as' => 'materials-toggle', 'filter' => 'permission:materials.deactivate']);
 });
+
+$routes->group('inventario', ['filter' => $catalogBaseFilters], static function (RouteCollection $routes): void {
+    $routes->get('existencias', 'Inventory\MovementController::stocks', ['as' => 'inventory-stocks', 'filter' => 'permission:stock.view']);
+    $routes->get('movimientos', 'Inventory\MovementController::index', ['as' => 'inventory-movements', 'filter' => 'permission:inventory.movements.view']);
+    $routes->get('movimientos/entrada/nueva', 'Inventory\MovementController::newEntry', ['as' => 'inventory-entry-new', 'filter' => 'permission:inventory.entries.create']);
+    $routes->post('movimientos/entrada', 'Inventory\MovementController::createEntry', ['as' => 'inventory-entry-create', 'filter' => 'permission:inventory.entries.create']);
+    $routes->get('movimientos/salida/nueva', 'Inventory\MovementController::newExit', ['as' => 'inventory-exit-new', 'filter' => 'permission:inventory.exits.create']);
+    $routes->post('movimientos/salida', 'Inventory\MovementController::createExit', ['as' => 'inventory-exit-create', 'filter' => 'permission:inventory.exits.create']);
+    $routes->get('movimientos/(:num)', 'Inventory\MovementController::show/$1', ['as' => 'inventory-movement-show', 'filter' => 'permission:inventory.movements.view']);
+    $routes->post('movimientos/(:num)/solicitar-reversion', 'Inventory\RequestController::createReversal/$1', ['as' => 'inventory-reversal-request', 'filter' => 'permission:inventory.reversals.request']);
+
+    $routes->get('solicitudes', 'Inventory\RequestController::index', ['as' => 'inventory-requests', 'filter' => 'permission:inventory.adjustments.request']);
+    $routes->get('solicitudes/ajuste/nueva', 'Inventory\RequestController::newAdjustment', ['as' => 'inventory-adjustment-new', 'filter' => 'permission:inventory.adjustments.request']);
+    $routes->post('solicitudes/ajuste', 'Inventory\RequestController::createAdjustment', ['as' => 'inventory-adjustment-create', 'filter' => 'permission:inventory.adjustments.request']);
+    $routes->post('solicitudes/(:num)/decision', 'Inventory\RequestController::decide/$1', ['as' => 'inventory-request-decide', 'filter' => 'permission:inventory.movements.view']);
+});
