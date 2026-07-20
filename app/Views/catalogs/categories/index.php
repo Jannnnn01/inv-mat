@@ -1,0 +1,10 @@
+<?= $this->extend('layouts/app') ?>
+<?= $this->section('title') ?>Categorías<?= $this->endSection() ?>
+<?= $this->section('main') ?>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><div><h1 class="h3 mb-1">Categorías</h1><p class="text-body-secondary mb-0">Clasificación de los materiales.</p></div><?php if (auth()->user()?->can('categories.create')): ?><a class="btn btn-primary" href="<?= url_to('categories-new') ?>">Nueva categoría</a><?php endif ?></div>
+<?= $this->include('partials/flash') ?>
+<form class="row g-2 mb-3" method="get"><div class="col-sm-6 col-lg-4"><input class="form-control" name="q" value="<?= esc($search) ?>" placeholder="Buscar por código o nombre"></div><div class="col-auto"><button class="btn btn-outline-secondary">Buscar</button></div></form>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Código</th><th>Nombre</th><th>Descripción</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead><tbody>
+<?php foreach ($records as $record): ?><tr><td><?= esc($record['code']) ?></td><td><?= esc($record['name']) ?></td><td><?= esc($record['description'] ?? '—') ?></td><td><span class="badge text-bg-<?= $record['active'] ? 'success' : 'secondary' ?>"><?= $record['active'] ? 'Activa' : 'Inactiva' ?></span></td><td><div class="d-flex justify-content-end gap-2"><?php if (auth()->user()?->can('categories.update')): ?><a class="btn btn-sm btn-outline-primary" href="<?= url_to('categories-edit', $record['id']) ?>">Editar</a><?php endif ?><?php if (auth()->user()?->can('categories.deactivate')): ?><form method="post" action="<?= url_to('categories-toggle', $record['id']) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-outline-<?= $record['active'] ? 'danger' : 'success' ?>" type="submit"><?= $record['active'] ? 'Desactivar' : 'Activar' ?></button></form><?php endif ?></div></td></tr><?php endforeach ?>
+</tbody></table></div></div><div class="mt-3"><?= $pager->links() ?></div>
+<?= $this->endSection() ?>

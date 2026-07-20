@@ -2,7 +2,17 @@
 
 namespace Config;
 
+use App\Contracts\AuthMailerInterface;
+use App\Services\AuthMailer;
+use App\Services\MagicLinkService;
+use App\Services\UserAccountService;
+use App\Services\UserRoleService;
 use CodeIgniter\Config\BaseService;
+use CodeIgniter\Settings\Config\Settings as SettingsConfig;
+use CodeIgniter\Settings\Settings;
+use CodeIgniter\Shield\Auth;
+use CodeIgniter\Shield\Authentication\JWTManager;
+use CodeIgniter\Shield\Authentication\Passwords;
 
 /**
  * Services Configuration file.
@@ -19,14 +29,75 @@ use CodeIgniter\Config\BaseService;
  */
 class Services extends BaseService
 {
-    /*
-     * public static function example($getShared = true)
-     * {
-     *     if ($getShared) {
-     *         return static::getSharedInstance('example');
-     *     }
-     *
-     *     return new \CodeIgniter\Example();
-     * }
-     */
+    public static function authMailer(bool $getShared = true): AuthMailerInterface
+    {
+        if ($getShared) {
+            return static::getSharedInstance('authMailer');
+        }
+
+        return new AuthMailer();
+    }
+
+    public static function magicLinks(bool $getShared = true): MagicLinkService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('magicLinks');
+        }
+
+        return new MagicLinkService(static::authMailer());
+    }
+
+    public static function userRoles(bool $getShared = true): UserRoleService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('userRoles');
+        }
+
+        return new UserRoleService();
+    }
+
+    public static function userAccounts(bool $getShared = true): UserAccountService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('userAccounts');
+        }
+
+        return new UserAccountService(static::userRoles(), static::magicLinks());
+    }
+
+    public static function auth(bool $getShared = true): Auth
+    {
+        if ($getShared) {
+            return static::getSharedInstance('auth');
+        }
+
+        return \CodeIgniter\Shield\Config\Services::auth(false);
+    }
+
+    public static function passwords(bool $getShared = true): Passwords
+    {
+        if ($getShared) {
+            return static::getSharedInstance('passwords');
+        }
+
+        return \CodeIgniter\Shield\Config\Services::passwords(false);
+    }
+
+    public static function jwtmanager(bool $getShared = true): JWTManager
+    {
+        if ($getShared) {
+            return static::getSharedInstance('jwtmanager');
+        }
+
+        return \CodeIgniter\Shield\Config\Services::jwtmanager(false);
+    }
+
+    public static function settings(?SettingsConfig $config = null, bool $getShared = true): Settings
+    {
+        if ($getShared) {
+            return static::getSharedInstance('settings', $config);
+        }
+
+        return \CodeIgniter\Settings\Config\Services::settings($config, false);
+    }
 }

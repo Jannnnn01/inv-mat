@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Filters\ActiveUserFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -12,6 +13,15 @@ use CodeIgniter\Filters\InvalidChars;
 use CodeIgniter\Filters\PageCache;
 use CodeIgniter\Filters\PerformanceMetrics;
 use CodeIgniter\Filters\SecureHeaders;
+use CodeIgniter\Shield\Filters\AuthRates;
+use CodeIgniter\Shield\Filters\ChainAuth;
+use CodeIgniter\Shield\Filters\ForcePasswordResetFilter;
+use CodeIgniter\Shield\Filters\GroupFilter;
+use CodeIgniter\Shield\Filters\HmacAuth;
+use CodeIgniter\Shield\Filters\JWTAuth;
+use CodeIgniter\Shield\Filters\PermissionFilter;
+use CodeIgniter\Shield\Filters\SessionAuth;
+use CodeIgniter\Shield\Filters\TokenAuth;
 
 class Filters extends BaseFilters
 {
@@ -34,6 +44,16 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
+        'session'       => SessionAuth::class,
+        'tokens'        => TokenAuth::class,
+        'hmac'          => HmacAuth::class,
+        'chain'         => ChainAuth::class,
+        'auth-rates'    => AuthRates::class,
+        'group'         => GroupFilter::class,
+        'permission'    => PermissionFilter::class,
+        'force-reset'   => ForcePasswordResetFilter::class,
+        'jwt'           => JWTAuth::class,
+        'active-user'   => ActiveUserFilter::class,
     ];
 
     /**
@@ -104,5 +124,9 @@ class Filters extends BaseFilters
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [];
+    public array $filters = [
+        'auth-rates' => [
+            'before' => ['login', 'login/*', 'auth/*'],
+        ],
+    ];
 }

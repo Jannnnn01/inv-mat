@@ -34,4 +34,25 @@ final class PublicRoutesTest extends CIUnitTestCase
 
         $this->get('/controller-not-declared');
     }
+
+    public function testPublicRegistrationRouteDoesNotExist(): void
+    {
+        $this->expectException(PageNotFoundException::class);
+
+        $this->get('/register');
+    }
+
+    public function testLogoutCannotBeRequestedWithGet(): void
+    {
+        $this->expectException(PageNotFoundException::class);
+
+        $this->get('/logout');
+    }
+
+    public function testCatalogsHaveNoPhysicalDeleteEndpoint(): void
+    {
+        $this->expectException(PageNotFoundException::class);
+
+        $this->delete('/catalogos/materiales/1');
+    }
 }

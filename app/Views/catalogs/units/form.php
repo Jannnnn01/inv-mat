@@ -1,0 +1,7 @@
+<?= $this->extend('layouts/app') ?>
+<?= $this->section('title') ?><?= $record ? 'Editar unidad' : 'Nueva unidad' ?><?= $this->endSection() ?>
+<?= $this->section('main') ?>
+<div class="card border-0 shadow-sm app-form-card mx-auto"><div class="card-body p-4"><div class="d-flex justify-content-between align-items-center mb-4"><h1 class="h4 mb-0"><?= $record ? 'Editar unidad' : 'Nueva unidad' ?></h1><a class="btn btn-sm btn-outline-secondary" href="<?= url_to('units') ?>">Volver</a></div><?= $this->include('partials/flash') ?>
+<form method="post" action="<?= $record ? url_to('units-update', $record['id']) : url_to('units-create') ?>"><?= csrf_field() ?><div class="mb-3"><label class="form-label" for="code">Código</label><input class="form-control" id="code" name="code" value="<?= esc(old('code') ?: ($record['code'] ?? '')) ?>" maxlength="20" required></div><div class="mb-3"><label class="form-label" for="name">Nombre</label><input class="form-control" id="name" name="name" value="<?= esc(old('name') ?: ($record['name'] ?? '')) ?>" maxlength="80" required></div><div class="mb-4"><label class="form-label" for="symbol">Símbolo</label><input class="form-control" id="symbol" name="symbol" value="<?= esc(old('symbol') ?: ($record['symbol'] ?? '')) ?>" maxlength="20" required></div><button class="btn btn-primary" type="submit">Guardar</button></form>
+</div></div>
+<?= $this->endSection() ?>
