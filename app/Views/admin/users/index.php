@@ -1,4 +1,4 @@
-<?= $this->extend('auth/layout') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('title') ?>Usuarios<?= $this->endSection() ?>
 

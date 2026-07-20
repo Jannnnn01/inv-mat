@@ -42,6 +42,7 @@ Ejecute las migraciones oficiales de Shield, Settings y las migraciones de la ap
 ```powershell
 php spark migrate --all
 php spark migrate:status
+php spark db:seed InitialCatalogSeeder
 ```
 
 No existe registro publico. Para crear el primer administrador, primero inicie Mailpit u otro servidor SMTP de desarrollo en el puerto configurado y ejecute:
@@ -72,6 +73,11 @@ Las rutas principales de autenticacion son:
 - `/login/magic-link`: recuperacion de acceso.
 - `/dashboard`: area autenticada.
 - `/admin/usuarios`: gestion de cuentas, solo para administradores autorizados.
+- `/catalogos/materiales`: catálogo de materiales.
+- `/catalogos/categorias`: categorías.
+- `/catalogos/proveedores`: proveedores.
+- `/catalogos/unidades`: unidades de medida.
+- `/catalogos/bodegas`: bodegas, solo para administradores.
 
 Para Apache/XAMPP o Laragon, el document root debe apuntar exclusivamente a `public/`.
 
@@ -99,9 +105,12 @@ npm audit
 - Un unico rol principal por usuario, reforzado por una restriccion en PostgreSQL.
 - Prohibicion de desactivar la propia cuenta o el ultimo administrador activo.
 - Cuentas inactivas expulsadas de las rutas protegidas.
+- Catálogos sin endpoints de eliminación física.
+- Existencias separadas por material y bodega mediante `NUMERIC(14,3)`.
+- Validación de cantidades enteras para materiales no fraccionables.
 - Errores internos ocultos en produccion.
 - Configuracion sensible mediante variables de entorno.
 
 ## Estado
 
-Fases 1 y 2 implementadas: base tecnica, PostgreSQL, frontend local, autenticacion, recuperacion, roles y gestion administrativa de usuarios. Los catalogos y movimientos de inventario se incorporaran en las siguientes fases.
+Fases 1, 2 y 3 implementadas: base técnica, PostgreSQL, autenticación, roles, usuarios, bodegas, unidades, categorías, proveedores, materiales y estructura de existencias por bodega. Los movimientos de inventario se incorporarán en la siguiente fase.

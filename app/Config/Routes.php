@@ -51,3 +51,42 @@ $routes->group('admin', [
     ]);
     $routes->post('usuarios/(:num)/invitacion', 'Admin\UserController::resendInvitation/$1', ['as' => 'admin-users-invite']);
 });
+
+$catalogBaseFilters = ['session', 'active-user', 'force-reset'];
+
+$routes->group('catalogos', ['filter' => $catalogBaseFilters], static function (RouteCollection $routes): void {
+    $routes->get('bodegas', 'Catalogs\WarehouseController::index', ['as' => 'warehouses', 'filter' => 'permission:warehouses.manage']);
+    $routes->get('bodegas/nueva', 'Catalogs\WarehouseController::new', ['as' => 'warehouses-new', 'filter' => 'permission:warehouses.manage']);
+    $routes->post('bodegas', 'Catalogs\WarehouseController::create', ['as' => 'warehouses-create', 'filter' => 'permission:warehouses.manage']);
+    $routes->get('bodegas/(:num)/editar', 'Catalogs\WarehouseController::edit/$1', ['as' => 'warehouses-edit', 'filter' => 'permission:warehouses.manage']);
+    $routes->post('bodegas/(:num)', 'Catalogs\WarehouseController::update/$1', ['as' => 'warehouses-update', 'filter' => 'permission:warehouses.manage']);
+    $routes->post('bodegas/(:num)/estado', 'Catalogs\WarehouseController::toggle/$1', ['as' => 'warehouses-toggle', 'filter' => 'permission:warehouses.manage']);
+
+    $routes->get('unidades', 'Catalogs\MeasurementUnitController::index', ['as' => 'units', 'filter' => 'permission:units.view']);
+    $routes->get('unidades/nueva', 'Catalogs\MeasurementUnitController::new', ['as' => 'units-new', 'filter' => 'permission:units.manage']);
+    $routes->post('unidades', 'Catalogs\MeasurementUnitController::create', ['as' => 'units-create', 'filter' => 'permission:units.manage']);
+    $routes->get('unidades/(:num)/editar', 'Catalogs\MeasurementUnitController::edit/$1', ['as' => 'units-edit', 'filter' => 'permission:units.manage']);
+    $routes->post('unidades/(:num)', 'Catalogs\MeasurementUnitController::update/$1', ['as' => 'units-update', 'filter' => 'permission:units.manage']);
+    $routes->post('unidades/(:num)/estado', 'Catalogs\MeasurementUnitController::toggle/$1', ['as' => 'units-toggle', 'filter' => 'permission:units.manage']);
+
+    $routes->get('categorias', 'Catalogs\CategoryController::index', ['as' => 'categories', 'filter' => 'permission:categories.view']);
+    $routes->get('categorias/nueva', 'Catalogs\CategoryController::new', ['as' => 'categories-new', 'filter' => 'permission:categories.create']);
+    $routes->post('categorias', 'Catalogs\CategoryController::create', ['as' => 'categories-create', 'filter' => 'permission:categories.create']);
+    $routes->get('categorias/(:num)/editar', 'Catalogs\CategoryController::edit/$1', ['as' => 'categories-edit', 'filter' => 'permission:categories.update']);
+    $routes->post('categorias/(:num)', 'Catalogs\CategoryController::update/$1', ['as' => 'categories-update', 'filter' => 'permission:categories.update']);
+    $routes->post('categorias/(:num)/estado', 'Catalogs\CategoryController::toggle/$1', ['as' => 'categories-toggle', 'filter' => 'permission:categories.deactivate']);
+
+    $routes->get('proveedores', 'Catalogs\SupplierController::index', ['as' => 'suppliers', 'filter' => 'permission:suppliers.view']);
+    $routes->get('proveedores/nuevo', 'Catalogs\SupplierController::new', ['as' => 'suppliers-new', 'filter' => 'permission:suppliers.create']);
+    $routes->post('proveedores', 'Catalogs\SupplierController::create', ['as' => 'suppliers-create', 'filter' => 'permission:suppliers.create']);
+    $routes->get('proveedores/(:num)/editar', 'Catalogs\SupplierController::edit/$1', ['as' => 'suppliers-edit', 'filter' => 'permission:suppliers.update']);
+    $routes->post('proveedores/(:num)', 'Catalogs\SupplierController::update/$1', ['as' => 'suppliers-update', 'filter' => 'permission:suppliers.update']);
+    $routes->post('proveedores/(:num)/estado', 'Catalogs\SupplierController::toggle/$1', ['as' => 'suppliers-toggle', 'filter' => 'permission:suppliers.deactivate']);
+
+    $routes->get('materiales', 'Catalogs\MaterialController::index', ['as' => 'materials', 'filter' => 'permission:materials.view']);
+    $routes->get('materiales/nuevo', 'Catalogs\MaterialController::new', ['as' => 'materials-new', 'filter' => 'permission:materials.create']);
+    $routes->post('materiales', 'Catalogs\MaterialController::create', ['as' => 'materials-create', 'filter' => 'permission:materials.create']);
+    $routes->get('materiales/(:num)/editar', 'Catalogs\MaterialController::edit/$1', ['as' => 'materials-edit', 'filter' => 'permission:materials.update']);
+    $routes->post('materiales/(:num)', 'Catalogs\MaterialController::update/$1', ['as' => 'materials-update', 'filter' => 'permission:materials.update']);
+    $routes->post('materiales/(:num)/estado', 'Catalogs\MaterialController::toggle/$1', ['as' => 'materials-toggle', 'filter' => 'permission:materials.deactivate']);
+});

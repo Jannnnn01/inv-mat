@@ -28,6 +28,8 @@ class AuthGroups extends ShieldAuthGroups
     public array $permissions = [
         'dashboard.view'                     => 'Consultar el dashboard.',
         'stock.view'                         => 'Consultar existencias y alertas.',
+        'units.view'                         => 'Consultar unidades de medida.',
+        'units.manage'                       => 'Gestionar unidades de medida.',
         'materials.view'                     => 'Consultar materiales.',
         'materials.create'                   => 'Crear materiales.',
         'materials.update'                   => 'Editar materiales.',
@@ -63,12 +65,12 @@ class AuthGroups extends ShieldAuthGroups
 
     public array $matrix = [
         'admin' => [
-            'dashboard.*', 'stock.*', 'materials.*', 'categories.*', 'suppliers.*',
+            'dashboard.*', 'stock.*', 'units.*', 'materials.*', 'categories.*', 'suppliers.*',
             'inventory.*', 'reports.*', 'financial.*', 'users.*', 'roles.*',
             'warehouses.*', 'files.*', 'audit.*', 'security.*',
         ],
         'warehouse' => [
-            'dashboard.view', 'stock.view',
+            'dashboard.view', 'stock.view', 'units.view',
             'materials.view', 'materials.create', 'materials.update',
             'categories.view', 'categories.create', 'categories.update',
             'suppliers.view', 'suppliers.create', 'suppliers.update',
@@ -78,7 +80,7 @@ class AuthGroups extends ShieldAuthGroups
             'files.upload', 'files.download',
         ],
         'viewer' => [
-            'dashboard.view', 'stock.view', 'materials.view', 'categories.view',
+            'dashboard.view', 'stock.view', 'units.view', 'materials.view', 'categories.view',
             'suppliers.view', 'inventory.movements.view', 'reports.view',
             'reports.export', 'files.download',
         ],

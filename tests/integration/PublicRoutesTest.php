@@ -48,4 +48,11 @@ final class PublicRoutesTest extends CIUnitTestCase
 
         $this->get('/logout');
     }
+
+    public function testCatalogsHaveNoPhysicalDeleteEndpoint(): void
+    {
+        $this->expectException(PageNotFoundException::class);
+
+        $this->delete('/catalogos/materiales/1');
+    }
 }
