@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Filters\ActiveUserFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -52,6 +53,7 @@ class Filters extends BaseFilters
         'permission'    => PermissionFilter::class,
         'force-reset'   => ForcePasswordResetFilter::class,
         'jwt'           => JWTAuth::class,
+        'active-user'   => ActiveUserFilter::class,
     ];
 
     /**

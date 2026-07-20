@@ -24,13 +24,30 @@ $routes->post('logout', '\CodeIgniter\Shield\Controllers\LoginController::logout
 
 $routes->get('mi-cuenta/contrasena', 'Account\PasswordController::edit', [
     'as'     => 'account-password',
-    'filter' => 'session',
+    'filter' => ['session', 'active-user'],
 ]);
 $routes->post('mi-cuenta/contrasena', 'Account\PasswordController::update', [
-    'filter' => 'session',
+    'filter' => ['session', 'active-user'],
 ]);
 
 $routes->get('dashboard', 'DashboardController::index', [
     'as'     => 'dashboard',
-    'filter' => ['session', 'force-reset', 'permission:dashboard.view'],
+    'filter' => ['session', 'active-user', 'force-reset', 'permission:dashboard.view'],
 ]);
+
+$routes->group('admin', [
+    'filter' => ['session', 'active-user', 'force-reset', 'permission:users.manage'],
+], static function (RouteCollection $routes): void {
+    $routes->get('usuarios', 'Admin\UserController::index', ['as' => 'admin-users']);
+    $routes->get('usuarios/nuevo', 'Admin\UserController::new', ['as' => 'admin-users-new']);
+    $routes->post('usuarios', 'Admin\UserController::create', [
+        'as'     => 'admin-users-create',
+        'filter' => 'permission:roles.assign',
+    ]);
+    $routes->post('usuarios/(:num)/estado', 'Admin\UserController::toggleStatus/$1', ['as' => 'admin-users-status']);
+    $routes->post('usuarios/(:num)/rol', 'Admin\UserController::updateRole/$1', [
+        'as'     => 'admin-users-role',
+        'filter' => 'permission:roles.assign',
+    ]);
+    $routes->post('usuarios/(:num)/invitacion', 'Admin\UserController::resendInvitation/$1', ['as' => 'admin-users-invite']);
+});

@@ -2,6 +2,11 @@
 
 namespace Config;
 
+use App\Contracts\AuthMailerInterface;
+use App\Services\AuthMailer;
+use App\Services\MagicLinkService;
+use App\Services\UserAccountService;
+use App\Services\UserRoleService;
 use CodeIgniter\Config\BaseService;
 use CodeIgniter\Settings\Config\Settings as SettingsConfig;
 use CodeIgniter\Settings\Settings;
@@ -24,6 +29,42 @@ use CodeIgniter\Shield\Authentication\Passwords;
  */
 class Services extends BaseService
 {
+    public static function authMailer(bool $getShared = true): AuthMailerInterface
+    {
+        if ($getShared) {
+            return static::getSharedInstance('authMailer');
+        }
+
+        return new AuthMailer();
+    }
+
+    public static function magicLinks(bool $getShared = true): MagicLinkService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('magicLinks');
+        }
+
+        return new MagicLinkService(static::authMailer());
+    }
+
+    public static function userRoles(bool $getShared = true): UserRoleService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('userRoles');
+        }
+
+        return new UserRoleService();
+    }
+
+    public static function userAccounts(bool $getShared = true): UserAccountService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('userAccounts');
+        }
+
+        return new UserAccountService(static::userRoles(), static::magicLinks());
+    }
+
     public static function auth(bool $getShared = true): Auth
     {
         if ($getShared) {

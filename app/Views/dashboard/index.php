@@ -13,6 +13,9 @@
                 <h1 class="h3">Dashboard</h1>
                 <p class="text-body-secondary">Sesion autenticada correctamente.</p>
                 <div class="d-flex gap-2">
+                    <?php if (auth()->user()?->can('users.manage')): ?>
+                        <a class="btn btn-primary" href="<?= url_to('admin-users') ?>">Gestionar usuarios</a>
+                    <?php endif ?>
                     <a class="btn btn-outline-primary" href="<?= url_to('account-password') ?>">Cambiar contrasena</a>
                     <form method="post" action="<?= url_to('logout') ?>">
                         <?= csrf_field() ?>

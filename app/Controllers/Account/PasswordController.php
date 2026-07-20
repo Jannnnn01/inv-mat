@@ -13,7 +13,7 @@ final class PasswordController extends BaseController
     public function edit(): string
     {
         return view('account/password', [
-            'recoveryAuthorized' => session()->get('passwordResetAuthorized') === true,
+            'recoveryAuthorized' => session()->getTempdata('passwordResetAuthorized') === true,
         ]);
     }
 
@@ -24,7 +24,7 @@ final class PasswordController extends BaseController
             return redirect()->route('login');
         }
 
-        $recoveryAuthorized = session()->get('passwordResetAuthorized') === true;
+        $recoveryAuthorized = session()->getTempdata('passwordResetAuthorized') === true;
 
         $rules = [
             'password' => [

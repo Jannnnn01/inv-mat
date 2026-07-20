@@ -29,4 +29,11 @@ final class UserRoleService
 
         $database->transComplete();
     }
+
+    public function primaryRole(User $user): ?string
+    {
+        $groups = $user->getGroups();
+
+        return $groups[0] ?? null;
+    }
 }
