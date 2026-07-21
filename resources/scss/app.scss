@@ -1199,6 +1199,23 @@ body {
     height: 1.1rem;
 }
 
+.app-auth-actions {
+    display: flex;
+    align-items: stretch;
+    gap: .75rem;
+    margin-top: .25rem;
+}
+
+.app-auth-actions > * {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    min-height: 3.25rem;
+    border-radius: .7rem;
+    font-weight: 700;
+}
+
 .app-auth-security-note {
     display: flex;
     align-items: center;
@@ -1473,6 +1490,10 @@ body {
     .app-auth-inline-link {
         max-width: 10rem;
         text-align: right;
+    }
+
+    .app-auth-actions {
+        flex-direction: column-reverse;
     }
 
     .app-topbar {

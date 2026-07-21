@@ -25,6 +25,7 @@ final class ProductionReadinessTest extends CIUnitTestCase
         $blueprint = file_get_contents($this->projectRoot() . 'render.yaml');
 
         $this->assertIsString($blueprint);
+        $blueprint = str_replace("\r\n", "\n", $blueprint);
         $this->assertStringContainsString('autoDeployTrigger: checksPass', $blueprint);
         $this->assertStringContainsString('healthCheckPath: /health', $blueprint);
         $this->assertStringContainsString("- key: DATABASE_URL\n        sync: false", $blueprint);
@@ -36,6 +37,7 @@ final class ProductionReadinessTest extends CIUnitTestCase
         $workflow = file_get_contents($this->projectRoot() . '.github/workflows/ci.yml');
 
         $this->assertIsString($workflow);
+        $workflow = str_replace("\r\n", "\n", $workflow);
         $this->assertStringContainsString("permissions:\n  contents: read", $workflow);
         $this->assertStringContainsString('composer audit', $workflow);
         $this->assertStringContainsString('npm audit --audit-level=high', $workflow);
