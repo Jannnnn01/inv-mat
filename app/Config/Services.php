@@ -2,9 +2,16 @@
 
 namespace Config;
 
+use App\Contracts\AttachmentStorageInterface;
 use App\Contracts\AuthMailerInterface;
+use App\Services\AttachmentService;
+use App\Services\AuditService;
 use App\Services\AuthMailer;
+use App\Services\LocalAttachmentStorage;
 use App\Services\MagicLinkService;
+use App\Services\ReportExportService;
+use App\Services\ReportService;
+use App\Services\S3AttachmentStorage;
 use App\Services\UserAccountService;
 use App\Services\UserRoleService;
 use CodeIgniter\Config\BaseService;
@@ -29,6 +36,55 @@ use CodeIgniter\Shield\Authentication\Passwords;
  */
 class Services extends BaseService
 {
+    public static function reports(bool $getShared = true): ReportService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reports');
+        }
+
+        return new ReportService();
+    }
+
+    public static function reportExports(bool $getShared = true): ReportExportService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('reportExports');
+        }
+
+        return new ReportExportService();
+    }
+
+    public static function audit(bool $getShared = true): AuditService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('audit');
+        }
+
+        return new AuditService();
+    }
+
+    public static function attachmentStorage(bool $getShared = true): AttachmentStorageInterface
+    {
+        if ($getShared) {
+            return static::getSharedInstance('attachmentStorage');
+        }
+
+        $config = config(Storage::class);
+
+        return strtolower($config->driver) === 's3'
+            ? new S3AttachmentStorage($config)
+            : new LocalAttachmentStorage($config->localPath);
+    }
+
+    public static function attachmentFiles(bool $getShared = true): AttachmentService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('attachmentFiles');
+        }
+
+        return new AttachmentService(static::attachmentStorage(), config(Storage::class));
+    }
+
     public static function authMailer(bool $getShared = true): AuthMailerInterface
     {
         if ($getShared) {

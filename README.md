@@ -73,6 +73,8 @@ Las rutas principales de autenticacion son:
 - `/login/magic-link`: recuperacion de acceso.
 - `/dashboard`: area autenticada.
 - `/admin/usuarios`: gestion de cuentas, solo para administradores autorizados.
+- `/admin/auditoria`: consulta de acciones y accesos administrativos, protegida por permisos de auditoría.
+- `/reportes`: consulta y exportación de reportes operativos, protegida por `reports.view` y `reports.export`.
 - `/catalogos/materiales`: catálogo de materiales.
 - `/catalogos/categorias`: categorías.
 - `/catalogos/proveedores`: proveedores.
@@ -83,6 +85,9 @@ Las rutas principales de autenticacion son:
 - `/inventario/solicitudes`: solicitudes de ajustes y reversiones.
 - `/inventario/alertas`: alertas de stock bajo por material y bodega.
 - `/inventario/valoraciones`: completar y corregir valoraciones, solo con permisos financieros.
+- Las salidas permiten registrar guía/remisión, traslado, cantidades solicitadas, entregadas y pendientes.
+- `/inventario/despachos/pendientes`: seguimiento y entrega posterior de cantidades pendientes.
+- Cada movimiento admite respaldos privados PDF, JPG, JPEG o PNG de hasta 10 MB.
 
 Para Apache/XAMPP o Laragon, el document root debe apuntar exclusivamente a `public/`.
 
@@ -96,6 +101,7 @@ php spark routes
 php spark invmat:inventory:smoke
 npm run build
 npm audit
+docker build --tag inv-mat:local .
 ```
 
 ## Seguridad inicial
@@ -121,9 +127,33 @@ npm audit
 - Ajustes y reversiones con solicitante y aprobador diferentes.
 - Eventos financieros inmutables para completar o corregir costos sin alterar movimientos.
 - Dashboard operativo y alertas derivadas del stock real por bodega.
+- Guías de salida inmutables: las líneas pendientes no descuentan existencias.
+- Entregas posteriores vinculadas a la guía original, con bloqueo transaccional contra sobreentrega.
+- Una reversión de entrega posterior reabre automáticamente el pendiente correspondiente.
+- Archivos con MIME real, SHA-256, nombre interno aleatorio, descarga autenticada y archivado lógico.
+- Auditoría general inmutable con usuario, acción, módulo, resultado, IP protegida, agente resumido y valores sanitizados.
+- Contraseñas, tokens, cookies, claves y secretos se excluyen de los valores registrados en auditoría.
+- Los eventos de auditoría se conservan por un mínimo de dos años y no tienen rutas de modificación o eliminación.
+- Adaptadores de almacenamiento local privado y S3-compatible para producción.
 - Errores internos ocultos en produccion.
 - Configuracion sensible mediante variables de entorno.
 
 ## Estado
 
-Fases 1 a 5 implementadas: base técnica, autenticación, roles, usuarios, catálogos, existencias, movimientos, solicitudes, dashboard, alertas y valoración financiera inmutable. Permanecen pendientes adjuntos, auditoría general, reportes, despliegue y operación productiva.
+Implementación funcional y cierre técnico incorporados: autenticación, autorización, usuarios, catálogos, existencias, movimientos, solicitudes, dashboard, alertas, valoración financiera, guías/remisiones, adjuntos privados, entregas pendientes, auditoría, reportes, pruebas automatizadas, Docker, GitHub Actions, Blueprint de Render, sesiones PostgreSQL y procedimientos de backup/rollback.
+
+El código queda preparado para despliegue. La activación externa todavía requiere conectar el repositorio en Render, completar secretos de Neon/SMTP/S3, aceptar el plan de servicio y ejecutar las pruebas de aceptación del cliente. Consulte [Despliegue en Render](docs/DEPLOYMENT_RENDER.md), [Operación y recuperación](docs/OPERATIONS.md) y [Pruebas de aceptación](docs/ACCEPTANCE.md).
+
+## Reportes
+
+La ruta `/reportes` incluye existencias actuales, stock bajo, kardex por material, entradas, salidas, ajustes y reversiones, movimientos por usuario, materiales más utilizados y auditoría administrativa. Todos admiten filtros aplicables y exportación CSV/PDF. Los costos solo se incorporan cuando el usuario posee `financial.view`; la auditoría administrativa exige además `audit.view` y la dirección IP requiere `audit.sensitive`.
+
+## Auditoría
+
+La auditoría registra automáticamente operaciones con cambio de estado, accesos administrativos y descargas protegidas. Los valores de entrada se limitan en tamaño y se sanitizan antes de almacenarse. Nunca se conservan contraseñas, tokens, cookies, claves API, credenciales ni secretos.
+
+La dirección IP se considera información protegida. Solo se muestra completa a usuarios con `audit.sensitive`; los demás reciben una representación parcial. La tabla `audit_events` impide `UPDATE` y `DELETE` mediante PostgreSQL y cada evento incluye una fecha mínima de retención de dos años. No existe una ruta web para eliminar auditorías.
+
+## Almacenamiento privado
+
+En desarrollo se utiliza `storage.driver = local`; los objetos quedan fuera de `public/`, bajo `writable/private-uploads`. En producción configure `storage.driver = s3` y las variables `storage.bucket`, `storage.region`, `storage.endpoint`, `storage.accessKey`, `storage.secretKey` y `storage.pathStyle`. El bucket debe permanecer privado. Las credenciales solo pertenecen al `.env` del entorno.

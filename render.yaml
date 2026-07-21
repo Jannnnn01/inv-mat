@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: inv-mat
+    runtime: docker
+    plan: starter
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    autoDeployTrigger: checksPass
+    healthCheckPath: /health
+    preDeployCommand: php ops/check-production-env.php && php spark migrate --all
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: CI_ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: encryption_key
+        generateValue: true
+      - key: health_databaseCheck
+        value: true
+      - key: session_driver
+        value: CodeIgniter\Session\Handlers\DatabaseHandler
+      - key: session_savePath
+        value: ci_sessions
+      - key: app_CSPEnabled
+        value: true
+      - key: app_forceGlobalSecureRequests
+        value: false
+      - key: storage_driver
+        value: s3
+      - key: storage_bucket
+        sync: false
+      - key: storage_region
+        value: us-east-1
+      - key: storage_endpoint
+        sync: false
+      - key: storage_accessKey
+        sync: false
+      - key: storage_secretKey
+        sync: false
+      - key: storage_pathStyle
+        value: false
+      - key: email_fromEmail
+        sync: false
+      - key: email_fromName
+        value: Inventario de materiales
+      - key: email_protocol
+        value: smtp
+      - key: email_SMTPHost
+        sync: false
+      - key: email_SMTPUser
+        sync: false
+      - key: email_SMTPPass
+        sync: false
+      - key: email_SMTPPort
+        value: 2525
+      - key: email_SMTPCrypto
+        value: tls

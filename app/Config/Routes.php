@@ -52,6 +52,13 @@ $routes->group('admin', [
     $routes->post('usuarios/(:num)/invitacion', 'Admin\UserController::resendInvitation/$1', ['as' => 'admin-users-invite']);
 });
 
+$routes->group('admin/auditoria', [
+    'filter' => ['session', 'active-user', 'force-reset', 'permission:audit.view'],
+], static function (RouteCollection $routes): void {
+    $routes->get('', 'Admin\AuditController::index', ['as' => 'admin-audit']);
+    $routes->get('(:num)', 'Admin\AuditController::show/$1', ['as' => 'admin-audit-show']);
+});
+
 $catalogBaseFilters = ['session', 'active-user', 'force-reset'];
 
 $routes->group('catalogos', ['filter' => $catalogBaseFilters], static function (RouteCollection $routes): void {
@@ -103,10 +110,22 @@ $routes->group('inventario', ['filter' => $catalogBaseFilters], static function 
     $routes->get('movimientos/salida/nueva', 'Inventory\MovementController::newExit', ['as' => 'inventory-exit-new', 'filter' => 'permission:inventory.exits.create']);
     $routes->post('movimientos/salida', 'Inventory\MovementController::createExit', ['as' => 'inventory-exit-create', 'filter' => 'permission:inventory.exits.create']);
     $routes->get('movimientos/(:num)', 'Inventory\MovementController::show/$1', ['as' => 'inventory-movement-show', 'filter' => 'permission:inventory.movements.view']);
+    $routes->post('movimientos/(:num)/archivos', 'Inventory\AttachmentController::upload/$1', ['as' => 'inventory-attachment-upload', 'filter' => 'permission:files.upload']);
+    $routes->get('archivos/(:num)/descargar', 'Inventory\AttachmentController::download/$1', ['as' => 'inventory-attachment-download', 'filter' => 'permission:files.download']);
+    $routes->post('archivos/(:num)/archivar', 'Inventory\AttachmentController::archive/$1', ['as' => 'inventory-attachment-archive', 'filter' => 'permission:files.archive']);
+    $routes->get('despachos/pendientes', 'Inventory\DispatchController::pending', ['as' => 'inventory-dispatch-pending', 'filter' => 'permission:inventory.movements.view']);
+    $routes->get('despachos/(:num)/entrega', 'Inventory\DispatchController::newDelivery/$1', ['as' => 'inventory-dispatch-delivery-new', 'filter' => 'permission:inventory.exits.create']);
+    $routes->post('despachos/(:num)/entrega', 'Inventory\DispatchController::createDelivery/$1', ['as' => 'inventory-dispatch-delivery-create', 'filter' => 'permission:inventory.exits.create']);
     $routes->post('movimientos/(:num)/solicitar-reversion', 'Inventory\RequestController::createReversal/$1', ['as' => 'inventory-reversal-request', 'filter' => 'permission:inventory.reversals.request']);
 
     $routes->get('solicitudes', 'Inventory\RequestController::index', ['as' => 'inventory-requests', 'filter' => 'permission:inventory.adjustments.request']);
     $routes->get('solicitudes/ajuste/nueva', 'Inventory\RequestController::newAdjustment', ['as' => 'inventory-adjustment-new', 'filter' => 'permission:inventory.adjustments.request']);
     $routes->post('solicitudes/ajuste', 'Inventory\RequestController::createAdjustment', ['as' => 'inventory-adjustment-create', 'filter' => 'permission:inventory.adjustments.request']);
     $routes->post('solicitudes/(:num)/decision', 'Inventory\RequestController::decide/$1', ['as' => 'inventory-request-decide', 'filter' => 'permission:inventory.movements.view']);
+});
+
+$routes->group('reportes', ['filter' => $catalogBaseFilters], static function (RouteCollection $routes): void {
+    $routes->get('', 'ReportController::index', ['as' => 'reports', 'filter' => 'permission:reports.view']);
+    $routes->get('(:segment)/csv', 'ReportController::csv/$1', ['as' => 'reports-csv', 'filter' => 'permission:reports.export']);
+    $routes->get('(:segment)/pdf', 'ReportController::pdf/$1', ['as' => 'reports-pdf', 'filter' => 'permission:reports.export']);
 });

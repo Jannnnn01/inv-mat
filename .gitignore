@@ -28,6 +28,7 @@ npm-debug.log*
 !/writable/session/index.html
 /writable/uploads/*
 !/writable/uploads/index.html
+/writable/private-uploads/*
 /writable/postgres-local/
 
 # Sistema operativo y editores

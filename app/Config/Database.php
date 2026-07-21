@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Support\DatabaseUrl;
 use CodeIgniter\Database\Config;
 
 /**
@@ -192,6 +193,11 @@ class Database extends Config
     public function __construct()
     {
         parent::__construct();
+
+        $databaseUrl = getenv('DATABASE_URL');
+        if (ENVIRONMENT !== 'testing' && is_string($databaseUrl) && trim($databaseUrl) !== '') {
+            $this->default = array_replace($this->default, DatabaseUrl::parse($databaseUrl));
+        }
 
         // Ensure that we always set the database group to 'tests' if
         // we are currently running an automated test suite, so that

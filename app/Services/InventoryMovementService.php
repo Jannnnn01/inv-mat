@@ -217,6 +217,12 @@ final class InventoryMovementService
     {
         $warehouseId = (int) ($header['warehouse_id'] ?? 0);
         $this->assertResponsibleNames($header);
+        if ($type === 'EXIT'
+            && ! empty($header['start_date'])
+            && ! empty($header['end_date'])
+            && (string) $header['end_date'] < (string) $header['start_date']) {
+            throw new DomainException('La fecha de fin de la guía no puede ser anterior a la fecha de inicio.');
+        }
 
         $this->begin();
         try {
@@ -228,8 +234,19 @@ final class InventoryMovementService
                 }
             }
 
-            $effects = $this->prepareOperationalEffects($type, $warehouseId, $items);
+            $dispatchItems = [];
+            if ($type === 'EXIT') {
+                $sourceDispatchId = ! empty($header['source_dispatch_note_id']) ? (int) $header['source_dispatch_note_id'] : null;
+                $prepared = $this->prepareDispatchEffects($warehouseId, $items, $sourceDispatchId);
+                $effects = $prepared['effects'];
+                $dispatchItems = $prepared['lines'];
+            } else {
+                $effects = $this->prepareOperationalEffects($type, $warehouseId, $items);
+            }
             $movementId = $this->insertMovement($type, $warehouseId, null, $header, $effects, $userId);
+            if ($type === 'EXIT') {
+                $this->insertDispatchNote($movementId, $header, $dispatchItems);
+            }
             $this->commit();
 
             return $movementId;
@@ -275,6 +292,147 @@ final class InventoryMovementService
         }
 
         return $effects;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     * @return array{effects: list<array<string, mixed>>, lines: list<array<string, mixed>>}
+     */
+    private function prepareDispatchEffects(int $warehouseId, array $items, ?int $sourceDispatchId = null): array
+    {
+        if ($items === []) {
+            throw new DomainException('Agrega al menos un material a la guía.');
+        }
+
+        $items = $this->sortAndRejectDuplicates($items);
+        if ($sourceDispatchId !== null) {
+            $sourceNote = $this->db->query(<<<'SQL'
+SELECT dn.id
+  FROM inventory_dispatch_notes dn
+  JOIN inventory_movements mv ON mv.id = dn.movement_id
+ WHERE dn.id = ? AND dn.source_dispatch_note_id IS NULL AND mv.warehouse_id = ?
+   AND NOT EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = mv.id)
+SQL, [$sourceDispatchId, $warehouseId])->getRowArray();
+            if ($sourceNote === null) {
+                throw new DomainException('La guía original no existe, ya es una entrega posterior o pertenece a otra bodega.');
+            }
+        }
+
+        $effects = [];
+        $lines = [];
+        foreach ($items as $item) {
+            $material = $this->activeMaterial((int) ($item['material_id'] ?? 0));
+            $delivered = trim((string) ($item['quantity'] ?? ''));
+            $delivered = $delivered === '' ? '0' : $delivered;
+            $quantityService = new QuantityService();
+
+            $sourceItemId = null;
+            if ($sourceDispatchId !== null) {
+                $sourceItemId = (int) ($item['source_dispatch_item_id'] ?? 0);
+                $sourceItem = $this->db->query(<<<'SQL'
+SELECT *
+  FROM inventory_dispatch_items
+ WHERE id = ? AND dispatch_note_id = ? AND source_dispatch_item_id IS NULL
+ FOR UPDATE
+SQL, [$sourceItemId, $sourceDispatchId])->getRowArray();
+                if ($sourceItem === null || (int) $sourceItem['material_id'] !== (int) $material['id']) {
+                    throw new DomainException('Uno de los pendientes no pertenece a la guía original.');
+                }
+                $deliveredLater = $this->db->query(<<<'SQL'
+SELECT COALESCE(SUM(child.delivered_quantity), 0) AS quantity
+  FROM inventory_dispatch_items child
+  JOIN inventory_dispatch_notes child_note ON child_note.id = child.dispatch_note_id
+ WHERE child.source_dispatch_item_id = ?
+   AND NOT EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = child_note.movement_id)
+SQL,
+                    [$sourceItemId],
+                )->getRowArray();
+                $remainingRow = $this->db->query(
+                    'SELECT ?::numeric - ?::numeric - ?::numeric AS quantity',
+                    [$sourceItem['requested_quantity'], $sourceItem['delivered_quantity'], $deliveredLater['quantity']],
+                )->getRowArray();
+                $requested = (string) $remainingRow['quantity'];
+                if ((float) $requested <= 0) {
+                    throw new DomainException('Uno de los pendientes ya fue entregado completamente.');
+                }
+            } else {
+                $requested = trim((string) ($item['requested_quantity'] ?? $item['quantity'] ?? ''));
+            }
+
+            if (! $quantityService->isValid($requested, (bool) $material['allows_fraction']) || (float) $requested <= 0) {
+                throw new DomainException('La cantidad solicitada no es válida para ' . $material['name'] . '.');
+            }
+            if (! $quantityService->isValid($delivered, (bool) $material['allows_fraction'])) {
+                throw new DomainException('La cantidad entregada no es válida para ' . $material['name'] . '.');
+            }
+            if ($sourceDispatchId !== null && (float) $delivered <= 0) {
+                throw new DomainException('La cantidad de una entrega posterior debe ser mayor que cero.');
+            }
+
+            $comparison = $this->db->query(<<<'SQL'
+SELECT CASE
+           WHEN ?::numeric = 0 THEN 'PENDING'
+           WHEN ?::numeric < ?::numeric THEN 'PARTIAL'
+           ELSE 'DELIVERED'
+       END AS status,
+       CASE WHEN ?::numeric <= ?::numeric THEN 1 ELSE 0 END AS allowed
+SQL, [$delivered, $delivered, $requested, $delivered, $requested])->getRowArray();
+            if ((int) $comparison['allowed'] !== 1) {
+                throw new DomainException('La cantidad entregada no puede superar la solicitada para ' . $material['name'] . '.');
+            }
+
+            if ((float) $delivered > 0) {
+                $effects[] = $this->negativeEffect($material, $this->lockStock((int) $material['id'], $warehouseId), $delivered);
+            }
+            $lines[] = [
+                'material_id'        => (int) $material['id'],
+                'source_dispatch_item_id' => $sourceItemId,
+                'requested_quantity' => $requested,
+                'delivered_quantity' => $delivered,
+                'status'             => $comparison['status'],
+            ];
+        }
+
+        if ($effects === []) {
+            throw new DomainException('La guía debe entregar al menos un material. Las solicitudes completamente pendientes se registrarán en un módulo de requisiciones.');
+        }
+
+        return ['effects' => $effects, 'lines' => $lines];
+    }
+
+    /** @param list<array<string, mixed>> $lines */
+    private function insertDispatchNote(int $movementId, array $header, array $lines): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $dispatchId = $this->insertAndReturnId('inventory_dispatch_notes', [
+            'movement_id'             => $movementId,
+            'source_dispatch_note_id' => ! empty($header['source_dispatch_note_id']) ? (int) $header['source_dispatch_note_id'] : null,
+            'guide_number'            => $this->nullable($header['document_number'] ?? null),
+            'authorization_number'    => $this->nullable($header['authorization_number'] ?? null),
+            'issue_date'              => $this->nullable($header['document_date'] ?? null),
+            'start_date'              => $this->nullable($header['start_date'] ?? null),
+            'end_date'                => $this->nullable($header['end_date'] ?? null),
+            'issuer_name'             => $this->nullable($header['issuer_name'] ?? null),
+            'issuer_tax_identifier'   => $this->nullable($header['issuer_tax_identifier'] ?? null),
+            'transporter_name'        => $this->nullable($header['transporter_name'] ?? null),
+            'transporter_identifier'  => $this->nullable($header['transporter_identifier'] ?? null),
+            'vehicle_plate'           => $this->nullable($header['vehicle_plate'] ?? null),
+            'origin_place'            => $this->nullable($header['origin_place'] ?? null),
+            'destination_name'        => $this->nullable($header['destination_name'] ?? null),
+            'destination_identifier'  => $this->nullable($header['destination_identifier'] ?? null),
+            'destination_address'     => $this->nullable($header['destination_address'] ?? null),
+            'route_description'       => $this->nullable($header['route_description'] ?? null),
+            'related_document_number' => $this->nullable($header['related_document_number'] ?? null),
+            'description'             => $this->nullable($header['dispatch_description'] ?? null),
+            'created_at'              => $now,
+        ]);
+
+        foreach ($lines as $line) {
+            $this->db->table('inventory_dispatch_items')->insert($line + [
+                'dispatch_note_id' => $dispatchId,
+                'created_at'       => $now,
+            ]);
+        }
     }
 
     /**

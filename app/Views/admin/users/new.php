@@ -3,26 +3,21 @@
 <?= $this->section('title') ?>Crear usuario<?= $this->endSection() ?>
 
 <?= $this->section('main') ?>
-<div class="container py-5">
-    <div class="card border-0 shadow-sm mx-auto app-form-card">
-        <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h4 mb-0">Crear usuario</h1>
-                <a class="btn btn-sm btn-outline-secondary" href="<?= url_to('admin-users') ?>">Volver</a>
+<section class="app-page-section" aria-labelledby="new-user-title">
+    <div class="card mx-auto app-form-card">
+        <div class="card-body p-4 p-md-5">
+            <div class="app-form-heading">
+                <div>
+                    <p class="app-eyebrow mb-1">Administración</p>
+                    <h1 class="h3 mb-1" id="new-user-title">Crear usuario</h1>
+                    <p class="app-page-description mb-0">Registra la cuenta y envía las instrucciones de acceso.</p>
+                </div>
+                <a class="btn btn-outline-secondary" href="<?= url_to('admin-users') ?>">Volver</a>
             </div>
 
-            <?php if (session('error') !== null): ?>
-                <div class="alert alert-danger"><?= esc(session('error')) ?></div>
-            <?php endif ?>
-            <?php if (session('errors') !== null): ?>
-                <div class="alert alert-danger">
-                    <?php foreach ((array) session('errors') as $error): ?>
-                        <div><?= esc($error) ?></div>
-                    <?php endforeach ?>
-                </div>
-            <?php endif ?>
+            <?= $this->include('partials/flash') ?>
 
-            <form method="post" action="<?= url_to('admin-users-create') ?>">
+            <form method="post" action="<?= url_to('admin-users-create') ?>" data-loading-form>
                 <?= csrf_field() ?>
                 <div class="mb-3">
                     <label class="form-label" for="username">Nombre de usuario</label>
@@ -41,9 +36,12 @@
                         <?php endforeach ?>
                     </select>
                 </div>
-                <button class="btn btn-primary" type="submit">Crear y enviar invitación</button>
+                <div class="app-form-actions">
+                    <a class="btn btn-outline-secondary" href="<?= url_to('admin-users') ?>">Cancelar</a>
+                    <button class="btn btn-primary" type="submit">Crear y enviar invitación</button>
+                </div>
             </form>
         </div>
     </div>
-</div>
+</section>
 <?= $this->endSection() ?>
