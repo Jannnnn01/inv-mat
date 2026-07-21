@@ -100,3 +100,17 @@ document.querySelectorAll('[data-loading-form]:not([data-inventory-form])').forE
         }
     });
 });
+
+document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.passwordToggle);
+        if (!(input instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const willShow = input.type === 'password';
+        input.type = willShow ? 'text' : 'password';
+        button.setAttribute('aria-pressed', String(willShow));
+        button.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+});

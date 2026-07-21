@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Inventario institucional</title>
+  <defs>
+    <linearGradient id="background" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16365b"/>
+      <stop offset="1" stop-color="#0b1727"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="17" y1="20" x2="47" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67e8f9"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#background)"/>
+  <path d="M13 25 32 13l19 12v25H13V25Z" fill="none" stroke="#f8fafc" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M19 29h26M19 40h26" fill="none" stroke="#9fb5cb" stroke-width="2.5" stroke-linecap="round"/>
+  <rect x="20" y="22" width="10" height="7" rx="2" fill="#facc15"/>
+  <rect x="34" y="30" width="10" height="10" rx="2" fill="url(#accent)"/>
+  <rect x="20" y="41" width="11" height="8" rx="2" fill="#67e8f9"/>
+  <path d="m36.5 46 3 3 6-7" fill="none" stroke="#f8fafc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -25,6 +25,8 @@ final class AuthConfigurationTest extends CIUnitTestCase
         $this->assertTrue($auth->allowMagicLinkLogins);
         $this->assertSame(15 * MINUTE, $auth->magicLinkLifetime);
         $this->assertSame(12, $auth->minimumPasswordLength);
+        $this->assertSame('\App\Views\auth\login', $auth->views['login']);
+        $this->assertSame('\App\Views\auth\magic_link_form', $auth->views['magic-link-login']);
     }
 
     public function testInitialRolesHaveExpectedBoundaries(): void
