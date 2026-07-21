@@ -98,6 +98,19 @@ final class InventoryMovementService
                 throw new DomainException('El movimiento seleccionado no admite reversión.');
             }
 
+            $dispatch = $this->db->table('inventory_dispatch_notes')->where('movement_id', $movementId)->get()->getRowArray();
+            if ($dispatch !== null && $dispatch['source_dispatch_note_id'] === null) {
+                $activeDeliveries = $this->db->query(<<<'SQL'
+SELECT COUNT(*) AS total
+  FROM inventory_dispatch_notes child
+ WHERE child.source_dispatch_note_id = ?
+   AND NOT EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = child.movement_id)
+SQL, [$dispatch['id']])->getRowArray();
+                if ((int) ($activeDeliveries['total'] ?? 0) > 0) {
+                    throw new DomainException('Primero deben revertirse las entregas posteriores asociadas a esta guía.');
+                }
+            }
+
             $existing = $this->db->table('inventory_requests')
                 ->where('type', 'REVERSAL')
                 ->where('original_movement_id', $movementId)
@@ -236,8 +249,32 @@ final class InventoryMovementService
 
             $dispatchItems = [];
             if ($type === 'EXIT') {
+                $requestId = ! empty($header['dispatch_request_id']) ? (int) $header['dispatch_request_id'] : null;
+                if ($requestId !== null) {
+                    $request = $this->db->query('SELECT * FROM dispatch_requests WHERE id = ? FOR UPDATE', [$requestId])->getRowArray();
+                    if ($request === null || $request['status'] !== 'APPROVED' || (int) $request['warehouse_id'] !== $warehouseId) {
+                        throw new DomainException('La requisición no está aprobada o no pertenece a la bodega seleccionada.');
+                    }
+                    $header['recipient_id'] = $request['recipient_id'];
+                }
+                if (! empty($header['recipient_id'])) {
+                    $recipient = $this->db->table('recipients')->where('id', (int) $header['recipient_id'])->where('active', true)->get()->getRowArray();
+                    if ($recipient === null) {
+                        throw new DomainException('El destinatario seleccionado no está disponible.');
+                    }
+                    $header['destination_name'] = $recipient['name'];
+                    $header['destination_identifier'] = $recipient['document_number'];
+                    $header['destination_address'] = $recipient['address'];
+                    $header['route_description'] = $recipient['route'];
+                }
+                if (empty($header['document_number'])) {
+                    $header['document_number'] = $this->nextGuideNumber();
+                }
+                if (empty($header['document_date'])) {
+                    $header['document_date'] = date('Y-m-d');
+                }
                 $sourceDispatchId = ! empty($header['source_dispatch_note_id']) ? (int) $header['source_dispatch_note_id'] : null;
-                $prepared = $this->prepareDispatchEffects($warehouseId, $items, $sourceDispatchId);
+                $prepared = $this->prepareDispatchEffects($warehouseId, $items, $sourceDispatchId, $requestId);
                 $effects = $prepared['effects'];
                 $dispatchItems = $prepared['lines'];
             } else {
@@ -245,7 +282,12 @@ final class InventoryMovementService
             }
             $movementId = $this->insertMovement($type, $warehouseId, null, $header, $effects, $userId);
             if ($type === 'EXIT') {
-                $this->insertDispatchNote($movementId, $header, $dispatchItems);
+                $dispatchId = $this->insertDispatchNote($movementId, $header, $dispatchItems, $userId);
+                if (! empty($header['dispatch_request_id'])) {
+                    $this->db->table('dispatch_requests')->where('id', (int) $header['dispatch_request_id'])->update([
+                        'status' => 'CONVERTED', 'dispatch_note_id' => $dispatchId, 'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
             }
             $this->commit();
 
@@ -298,7 +340,7 @@ final class InventoryMovementService
      * @param list<array<string, mixed>> $items
      * @return array{effects: list<array<string, mixed>>, lines: list<array<string, mixed>>}
      */
-    private function prepareDispatchEffects(int $warehouseId, array $items, ?int $sourceDispatchId = null): array
+    private function prepareDispatchEffects(int $warehouseId, array $items, ?int $sourceDispatchId = null, ?int $requestId = null): array
     {
         if ($items === []) {
             throw new DomainException('Agrega al menos un material a la guía.');
@@ -357,6 +399,14 @@ SQL,
                 }
             } else {
                 $requested = trim((string) ($item['requested_quantity'] ?? $item['quantity'] ?? ''));
+                if ($requestId !== null) {
+                    $requestItemId = (int) ($item['request_item_id'] ?? 0);
+                    $requestItem = $this->db->query('SELECT * FROM dispatch_request_items WHERE id = ? AND request_id = ? FOR UPDATE', [$requestItemId, $requestId])->getRowArray();
+                    if ($requestItem === null || (int) $requestItem['material_id'] !== (int) $material['id'] || (float) $requestItem['quantity'] !== (float) $requested) {
+                        throw new DomainException('Los materiales no coinciden con la requisición aprobada.');
+                    }
+                    $this->releaseRequestReservation($requestItemId);
+                }
             }
 
             if (! $quantityService->isValid($requested, (bool) $material['allows_fraction']) || (float) $requested <= 0) {
@@ -381,8 +431,19 @@ SQL, [$delivered, $delivered, $requested, $delivered, $requested])->getRowArray(
                 throw new DomainException('La cantidad entregada no puede superar la solicitada para ' . $material['name'] . '.');
             }
 
+            $stock = null;
+            if ($sourceItemId === null) {
+                $stock = $this->lockStock((int) $material['id'], $warehouseId);
+                if ((float) $requested > (float) $stock['quantity'] - $this->activeReserved($warehouseId, (int) $material['id'])) {
+                    throw new DomainException('La cantidad solicitada supera la existencia disponible de ' . $material['name'] . '.');
+                }
+            }
             if ((float) $delivered > 0) {
-                $effects[] = $this->negativeEffect($material, $this->lockStock((int) $material['id'], $warehouseId), $delivered);
+                if ($sourceItemId !== null) {
+                    $this->consumeDispatchReservation($sourceItemId, $delivered);
+                    $stock = $this->lockStock((int) $material['id'], $warehouseId);
+                }
+                $effects[] = $this->negativeEffect($material, $stock, $delivered);
             }
             $lines[] = [
                 'material_id'        => (int) $material['id'],
@@ -401,12 +462,14 @@ SQL, [$delivered, $delivered, $requested, $delivered, $requested])->getRowArray(
     }
 
     /** @param list<array<string, mixed>> $lines */
-    private function insertDispatchNote(int $movementId, array $header, array $lines): void
+    private function insertDispatchNote(int $movementId, array $header, array $lines, int $userId): int
     {
         $now = date('Y-m-d H:i:s');
         $dispatchId = $this->insertAndReturnId('inventory_dispatch_notes', [
             'movement_id'             => $movementId,
             'source_dispatch_note_id' => ! empty($header['source_dispatch_note_id']) ? (int) $header['source_dispatch_note_id'] : null,
+            'dispatch_request_id'     => ! empty($header['dispatch_request_id']) ? (int) $header['dispatch_request_id'] : null,
+            'recipient_id'            => ! empty($header['recipient_id']) ? (int) $header['recipient_id'] : null,
             'guide_number'            => $this->nullable($header['document_number'] ?? null),
             'authorization_number'    => $this->nullable($header['authorization_number'] ?? null),
             'issue_date'              => $this->nullable($header['document_date'] ?? null),
@@ -432,7 +495,20 @@ SQL, [$delivered, $delivered, $requested, $delivered, $requested])->getRowArray(
                 'dispatch_note_id' => $dispatchId,
                 'created_at'       => $now,
             ]);
+            $dispatchItemId = (int) $this->db->insertID();
+            $pending = round((float) $line['requested_quantity'] - (float) $line['delivered_quantity'], 3);
+            if ($pending > 0 && $line['source_dispatch_item_id'] === null) {
+                $pendingQuantity = number_format($pending, 3, '.', '');
+                $this->db->table('inventory_reservations')->insert([
+                    'warehouse_id' => (int) $header['warehouse_id'], 'material_id' => (int) $line['material_id'],
+                    'request_item_id' => null, 'dispatch_item_id' => $dispatchItemId,
+                    'initial_quantity' => $pendingQuantity, 'remaining_quantity' => $pendingQuantity,
+                    'status' => 'ACTIVE', 'created_by' => $userId, 'created_at' => $now, 'updated_at' => $now,
+                ]);
+            }
         }
+
+        return $dispatchId;
     }
 
     /**
@@ -523,6 +599,8 @@ SQL, [$delivered, $delivered, $requested, $delivered, $requested])->getRowArray(
         if ($originalItems === []) {
             throw new DomainException('El movimiento original no tiene detalles.');
         }
+
+        $this->restoreOrReleaseDispatchReservations($originalId);
 
         $effects = [];
         foreach ($originalItems as $item) {
@@ -675,6 +753,10 @@ SQL, [
     /** @return array<string, mixed> */
     private function negativeEffect(array $material, array $stock, string $quantity): array
     {
+        $available = (float) $stock['quantity'] - $this->activeReserved((int) $stock['warehouse_id'], (int) $material['id']);
+        if ((float) $quantity > $available) {
+            throw new DomainException('La operación supera el stock disponible no reservado de ' . $material['name'] . '.');
+        }
         $allocation = $this->db->query(<<<'SQL'
 SELECT LEAST(?::numeric, ?::numeric) AS valued_quantity,
        ROUND(LEAST(?::numeric, ?::numeric) * COALESCE(?::numeric, 0), 6) AS line_value,
@@ -800,6 +882,92 @@ SQL, [$materialId, $warehouseId, $now, $now]);
         }
 
         return trim((string) $user['username']) ?: 'Usuario ' . $userId;
+    }
+
+    private function nextGuideNumber(): string
+    {
+        $row = $this->db->query(<<<'SQL'
+INSERT INTO document_sequences (series_key, establishment_code, emission_point_code, next_number, updated_at)
+VALUES ('DISPATCH', '001', '001', 2, ?)
+ON CONFLICT (series_key) DO UPDATE
+SET next_number = document_sequences.next_number + 1, updated_at = EXCLUDED.updated_at
+RETURNING establishment_code, emission_point_code, next_number - 1 AS sequence
+SQL, [date('Y-m-d H:i:s')])->getRowArray();
+        if ($row === null) {
+            throw new DomainException('No fue posible generar el número de guía.');
+        }
+
+        return $row['establishment_code'] . '-' . $row['emission_point_code'] . '-' . str_pad((string) $row['sequence'], 9, '0', STR_PAD_LEFT);
+    }
+
+    private function activeReserved(int $warehouseId, int $materialId): float
+    {
+        $row = $this->db->table('inventory_reservations')->selectSum('remaining_quantity', 'quantity')
+            ->where('warehouse_id', $warehouseId)->where('material_id', $materialId)->where('status', 'ACTIVE')->get()->getRowArray();
+
+        return (float) ($row['quantity'] ?? 0);
+    }
+
+    private function releaseRequestReservation(int $requestItemId): void
+    {
+        $reservation = $this->db->query("SELECT * FROM inventory_reservations WHERE request_item_id = ? AND status = 'ACTIVE' FOR UPDATE", [$requestItemId])->getRowArray();
+        if ($reservation === null) {
+            throw new DomainException('La reserva de la requisición ya no está disponible.');
+        }
+        $this->db->table('inventory_reservations')->where('id', $reservation['id'])->update([
+            'remaining_quantity' => 0, 'status' => 'RELEASED', 'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private function consumeDispatchReservation(int $dispatchItemId, string $quantity): void
+    {
+        $reservation = $this->db->query("SELECT * FROM inventory_reservations WHERE dispatch_item_id = ? AND status = 'ACTIVE' FOR UPDATE", [$dispatchItemId])->getRowArray();
+        if ($reservation === null || (float) $quantity > (float) $reservation['remaining_quantity']) {
+            throw new DomainException('La entrega supera la reserva vigente de la guía.');
+        }
+        $remaining = round((float) $reservation['remaining_quantity'] - (float) $quantity, 3);
+        $this->db->table('inventory_reservations')->where('id', $reservation['id'])->update([
+            'remaining_quantity' => $remaining, 'status' => $remaining <= 0 ? 'CONSUMED' : 'ACTIVE',
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private function restoreOrReleaseDispatchReservations(int $movementId): void
+    {
+        $dispatch = $this->db->table('inventory_dispatch_notes')->where('movement_id', $movementId)->get()->getRowArray();
+        if ($dispatch === null) {
+            return;
+        }
+
+        $items = $this->db->table('inventory_dispatch_items')->where('dispatch_note_id', $dispatch['id'])->get()->getResultArray();
+        if ($dispatch['source_dispatch_note_id'] === null) {
+            foreach ($items as $item) {
+                $this->db->table('inventory_reservations')->where('dispatch_item_id', $item['id'])->where('status', 'ACTIVE')->update([
+                    'remaining_quantity' => 0,
+                    'status' => 'RELEASED',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            return;
+        }
+
+        foreach ($items as $item) {
+            $rootItemId = (int) $item['source_dispatch_item_id'];
+            $reservation = $this->db->query('SELECT * FROM inventory_reservations WHERE dispatch_item_id = ? FOR UPDATE', [$rootItemId])->getRowArray();
+            if ($reservation === null) {
+                throw new DomainException('No se encontró la reserva original de la entrega posterior.');
+            }
+            $remaining = round((float) $reservation['remaining_quantity'] + (float) $item['delivered_quantity'], 3);
+            if ($remaining > (float) $reservation['initial_quantity']) {
+                throw new DomainException('La reversión excedería la reserva original de la guía.');
+            }
+            $this->db->table('inventory_reservations')->where('id', $reservation['id'])->update([
+                'remaining_quantity' => $remaining,
+                'status' => 'ACTIVE',
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
     }
 
     /** @param array<string, mixed> $data */

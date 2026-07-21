@@ -42,6 +42,8 @@ class AuthGroups extends ShieldAuthGroups
         'suppliers.create'                   => 'Crear proveedores.',
         'suppliers.update'                   => 'Editar proveedores.',
         'suppliers.deactivate'               => 'Desactivar proveedores.',
+        'recipients.view'                    => 'Consultar destinatarios.',
+        'recipients.manage'                  => 'Gestionar destinatarios.',
         'inventory.entries.create'           => 'Registrar entradas.',
         'inventory.exits.create'             => 'Registrar salidas.',
         'inventory.movements.view'           => 'Consultar movimientos.',
@@ -49,6 +51,8 @@ class AuthGroups extends ShieldAuthGroups
         'inventory.adjustments.approve'      => 'Aprobar ajustes ajenos.',
         'inventory.reversals.request'        => 'Solicitar reversiones.',
         'inventory.reversals.approve'        => 'Aprobar reversiones ajenas.',
+        'inventory.dispatch_requests.create' => 'Crear requisiciones de despacho.',
+        'inventory.dispatch_requests.approve'=> 'Aprobar requisiciones y reservar stock.',
         'reports.view'                       => 'Consultar reportes.',
         'reports.export'                     => 'Exportar reportes.',
         'financial.view'                     => 'Consultar costos y valoracion.',
@@ -66,7 +70,7 @@ class AuthGroups extends ShieldAuthGroups
 
     public array $matrix = [
         'admin' => [
-            'dashboard.*', 'stock.*', 'units.*', 'materials.*', 'categories.*', 'suppliers.*',
+            'dashboard.*', 'stock.*', 'units.*', 'materials.*', 'categories.*', 'suppliers.*', 'recipients.*',
             'inventory.*', 'reports.*', 'financial.*', 'users.*', 'roles.*',
             'warehouses.*', 'files.*', 'audit.*', 'security.*',
         ],
@@ -75,14 +79,17 @@ class AuthGroups extends ShieldAuthGroups
             'materials.view', 'materials.create', 'materials.update',
             'categories.view', 'categories.create', 'categories.update',
             'suppliers.view', 'suppliers.create', 'suppliers.update',
+            'recipients.view', 'recipients.manage',
             'inventory.entries.create', 'inventory.exits.create',
             'inventory.movements.view', 'inventory.adjustments.request',
+            'inventory.dispatch_requests.create',
             'inventory.reversals.request', 'reports.view', 'reports.export',
             'files.upload', 'files.download',
         ],
         'viewer' => [
             'dashboard.view', 'stock.view', 'units.view', 'materials.view', 'categories.view',
             'suppliers.view', 'inventory.movements.view', 'reports.view',
+            'recipients.view', 'inventory.dispatch_requests.create',
             'reports.export', 'files.download',
         ],
     ];

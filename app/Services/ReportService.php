@@ -11,8 +11,8 @@ final class ReportService
 {
     /** @var array<string, array{title: string, description: string}> */
     private const DEFINITIONS = [
-        'current-stock'       => ['title' => 'Existencias actuales', 'description' => 'Saldo físico por material y bodega.'],
-        'low-stock'           => ['title' => 'Materiales con stock bajo', 'description' => 'Existencias iguales o inferiores al mínimo configurado.'],
+        'current-stock'       => ['title' => 'Existencias actuales', 'description' => 'Saldo físico, reservado y disponible por material y bodega.'],
+        'low-stock'           => ['title' => 'Materiales con stock bajo', 'description' => 'Disponibilidad igual o inferior al mínimo configurado.'],
         'kardex'              => ['title' => 'Kardex por material', 'description' => 'Secuencia histórica de entradas y salidas con saldo anterior y posterior.'],
         'entries'             => ['title' => 'Entradas por período', 'description' => 'Detalle de materiales recibidos durante el período seleccionado.'],
         'exits'               => ['title' => 'Salidas por período', 'description' => 'Detalle de materiales entregados durante el período seleccionado.'],
@@ -91,7 +91,8 @@ final class ReportService
     {
         $columns = [
             'warehouse' => 'Bodega', 'code' => 'Código', 'material' => 'Material', 'category' => 'Categoría',
-            'unit' => 'Unidad', 'quantity' => 'Existencia', 'minimum_stock' => 'Mínimo', 'status' => 'Estado',
+            'unit' => 'Unidad', 'quantity' => 'Existencia física', 'reserved_quantity' => 'Reservado',
+            'available_quantity' => 'Disponible', 'minimum_stock' => 'Mínimo', 'status' => 'Estado',
         ];
         $financialSelect = '';
         if ($financial) {
@@ -106,14 +107,20 @@ final class ReportService
         }
 
         $sql = "SELECT w.name AS warehouse, m.code, m.name AS material, c.name AS category, u.symbol AS unit,
-                       COALESCE(s.quantity, 0) AS quantity, m.minimum_stock,
-                       CASE WHEN COALESCE(s.quantity, 0) <= m.minimum_stock THEN 'Stock bajo' ELSE 'Normal' END AS status
+                       COALESCE(s.quantity, 0) AS quantity, COALESCE(r.reserved_quantity, 0) AS reserved_quantity,
+                       COALESCE(s.quantity, 0) - COALESCE(r.reserved_quantity, 0) AS available_quantity, m.minimum_stock,
+                       CASE WHEN COALESCE(s.quantity, 0) - COALESCE(r.reserved_quantity, 0) <= m.minimum_stock THEN 'Stock bajo' ELSE 'Normal' END AS status
                        {$financialSelect}
                   FROM materials m
                   JOIN categories c ON c.id = m.category_id
                   JOIN measurement_units u ON u.id = m.unit_id
                  CROSS JOIN warehouses w
                   LEFT JOIN inventory_stocks s ON s.material_id = m.id AND s.warehouse_id = w.id
+                  LEFT JOIN (
+                    SELECT warehouse_id, material_id, SUM(quantity_remaining) AS reserved_quantity
+                      FROM inventory_reservations WHERE status = 'ACTIVE'
+                     GROUP BY warehouse_id, material_id
+                  ) r ON r.material_id = m.id AND r.warehouse_id = w.id
                  WHERE m.active = TRUE AND w.active = TRUE";
         $params = [];
         $this->appendCatalogFilters($sql, $params, $filters, 'm', 'w');
@@ -128,7 +135,8 @@ final class ReportService
     {
         $columns = [
             'warehouse' => 'Bodega', 'code' => 'Código', 'material' => 'Material', 'category' => 'Categoría',
-            'unit' => 'Unidad', 'quantity' => 'Existencia', 'minimum_stock' => 'Mínimo', 'deficit' => 'Déficit',
+            'unit' => 'Unidad', 'quantity' => 'Existencia física', 'reserved_quantity' => 'Reservado',
+            'available_quantity' => 'Disponible', 'minimum_stock' => 'Mínimo', 'deficit' => 'Déficit',
         ];
         $financialSelect = '';
         if ($financial) {
@@ -138,16 +146,22 @@ final class ReportService
         }
 
         $sql = "SELECT w.name AS warehouse, m.code, m.name AS material, c.name AS category, u.symbol AS unit,
-                       COALESCE(s.quantity, 0) AS quantity, m.minimum_stock,
-                       GREATEST(m.minimum_stock - COALESCE(s.quantity, 0), 0) AS deficit
+                       COALESCE(s.quantity, 0) AS quantity, COALESCE(r.reserved_quantity, 0) AS reserved_quantity,
+                       COALESCE(s.quantity, 0) - COALESCE(r.reserved_quantity, 0) AS available_quantity, m.minimum_stock,
+                       GREATEST(m.minimum_stock - (COALESCE(s.quantity, 0) - COALESCE(r.reserved_quantity, 0)), 0) AS deficit
                        {$financialSelect}
                   FROM materials m
                   JOIN categories c ON c.id = m.category_id
                   JOIN measurement_units u ON u.id = m.unit_id
                  CROSS JOIN warehouses w
                   LEFT JOIN inventory_stocks s ON s.material_id = m.id AND s.warehouse_id = w.id
+                  LEFT JOIN (
+                    SELECT warehouse_id, material_id, SUM(quantity_remaining) AS reserved_quantity
+                      FROM inventory_reservations WHERE status = 'ACTIVE'
+                     GROUP BY warehouse_id, material_id
+                  ) r ON r.material_id = m.id AND r.warehouse_id = w.id
                  WHERE m.active = TRUE AND w.active = TRUE
-                   AND COALESCE(s.quantity, 0) <= m.minimum_stock";
+                   AND COALESCE(s.quantity, 0) - COALESCE(r.reserved_quantity, 0) <= m.minimum_stock";
         $params = [];
         $this->appendCatalogFilters($sql, $params, $filters, 'm', 'w');
         $sql .= ' ORDER BY deficit DESC, w.name, m.name LIMIT ?';

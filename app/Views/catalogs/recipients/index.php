@@ -1,0 +1,11 @@
+<?= $this->extend('layouts/app') ?>
+<?= $this->section('title') ?>Destinatarios<?= $this->endSection() ?>
+<?= $this->section('main') ?>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><div><p class="app-eyebrow mb-1">Catálogos</p><h1 class="h2 mb-1">Destinatarios</h1><p class="text-body-secondary mb-0">Personas, áreas o empresas que reciben materiales.</p></div><?php if (auth()->user()?->can('recipients.manage')): ?><a class="btn btn-primary" href="<?= url_to('recipients-new') ?>">+ Nuevo destinatario</a><?php endif ?></div>
+<?= $this->include('partials/flash') ?>
+<form class="card card-body border-0 shadow-sm mb-3" method="get"><div class="input-group"><input class="form-control" name="q" value="<?= esc($search) ?>" placeholder="Buscar por nombre o documento"><button class="btn btn-outline-primary">Buscar</button></div></form>
+<div class="card app-table-card"><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Destinatario</th><th>Documento</th><th>Contacto</th><th>Dirección</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead><tbody>
+<?php foreach ($records as $record): ?><tr><td class="fw-semibold"><?= esc($record['name']) ?></td><td><?= esc(trim(($record['document_type'] ?? '') . ' ' . ($record['document_number'] ?? '')) ?: '—') ?></td><td><?= esc($record['contact_name'] ?? $record['email'] ?? '—') ?></td><td><?= esc($record['address']) ?></td><td><span class="badge text-bg-<?= $record['active'] ? 'success' : 'secondary' ?>"><?= $record['active'] ? 'Activo' : 'Inactivo' ?></span></td><td><div class="d-flex justify-content-end gap-2"><?php if (auth()->user()?->can('recipients.manage')): ?><a class="btn btn-sm btn-outline-primary" href="<?= url_to('recipients-edit', $record['id']) ?>">Editar</a><form method="post" action="<?= url_to('recipients-toggle', $record['id']) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-outline-<?= $record['active'] ? 'danger' : 'success' ?>"><?= $record['active'] ? 'Desactivar' : 'Activar' ?></button></form><?php endif ?></div></td></tr><?php endforeach ?>
+<?php if ($records === []): ?><tr><td colspan="6" class="app-empty-state">No existen destinatarios registrados.</td></tr><?php endif ?></tbody></table></div></div>
+<?= $pager->links('default', 'app_full') ?>
+<?= $this->endSection() ?>

@@ -7,7 +7,7 @@
 <div class="alert alert-info">La nueva salida quedará vinculada a la guía original. El backend bloqueará cualquier cantidad superior al pendiente vigente.</div>
 <form method="post" action="<?= url_to('inventory-dispatch-delivery-create', $dispatch['id']) ?>"><?= csrf_field() ?>
 <div class="row g-3">
-    <div class="col-md-6"><label class="form-label" for="document_number">Número de la nueva guía/remisión</label><input class="form-control" id="document_number" name="document_number" maxlength="80" value="<?= esc(old('document_number')) ?>"></div>
+    <div class="col-md-6"><label class="form-label">Número de la nueva guía/remisión</label><input class="form-control" value="Se generará automáticamente" readonly></div>
     <div class="col-md-3"><label class="form-label" for="document_date">Fecha</label><input class="form-control" type="date" id="document_date" name="document_date" value="<?= esc(old('document_date', date('Y-m-d'))) ?>"></div>
     <div class="col-md-3"><label class="form-label" for="vehicle_plate">Placa</label><input class="form-control" id="vehicle_plate" name="vehicle_plate" maxlength="20" value="<?= esc(old('vehicle_plate')) ?>"></div>
     <div class="col-md-6"><label class="form-label" for="transporter_name">Transportista</label><input class="form-control" id="transporter_name" name="transporter_name" maxlength="180" value="<?= esc(old('transporter_name')) ?>"></div>

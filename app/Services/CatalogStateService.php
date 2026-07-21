@@ -8,6 +8,7 @@ use App\Models\CategoryModel;
 use App\Models\BaseCatalogModel;
 use App\Models\MaterialModel;
 use App\Models\MeasurementUnitModel;
+use App\Models\RecipientModel;
 use App\Models\SupplierModel;
 use App\Models\WarehouseModel;
 use DomainException;
@@ -65,6 +66,12 @@ final class CatalogStateService
                 throw new DomainException('Desactiva primero los materiales activos que usan esta unidad.');
             }
         }
+        if ($catalog === 'recipients') {
+            $inUse = db_connect()->table('dispatch_requests')->where('recipient_id', $record['id'])->whereIn('status', ['PENDING', 'APPROVED'])->countAllResults() > 0;
+            if ($inUse) {
+                throw new DomainException('El destinatario tiene requisiciones pendientes o aprobadas.');
+            }
+        }
     }
 
     private function modelFor(string $catalog): BaseCatalogModel
@@ -75,6 +82,7 @@ final class CatalogStateService
             'categories'       => model(CategoryModel::class),
             'suppliers'        => model(SupplierModel::class),
             'materials'        => model(MaterialModel::class),
+            'recipients'       => model(RecipientModel::class),
             default            => throw new InvalidArgumentException('Catálogo no permitido.'),
         };
     }

@@ -8,6 +8,7 @@ use App\Controllers\BaseController;
 use App\Models\InventoryMovementItemModel;
 use App\Models\InventoryMovementModel;
 use App\Models\MaterialModel;
+use App\Models\RecipientModel;
 use App\Models\SupplierModel;
 use App\Models\WarehouseModel;
 use App\Services\InventoryMovementService;
@@ -95,6 +96,11 @@ final class MovementController extends BaseController
             ->where('dn.source_dispatch_note_id', $dispatch['id'])
             ->orderBy('dn.id')
             ->get()->getResultArray();
+        $dispatchStatus = null;
+        if ($dispatch !== null) {
+            $pending = array_sum(array_map(static fn (array $line): float => (float) $line['effective_pending_quantity'], $dispatchItems));
+            $dispatchStatus = (int) $movement['is_reversed'] === 1 ? 'ANNULLED' : ($pending > 0 ? 'PARTIAL' : 'COMPLETED');
+        }
         $attachments = db_connect()->table('inventory_attachments a')
             ->select('a.*, users.username AS uploaded_by_name')
             ->join('users', 'users.id = a.uploaded_by')
@@ -109,6 +115,7 @@ final class MovementController extends BaseController
             'dispatchItems' => $dispatchItems,
             'sourceDispatch' => $sourceDispatch,
             'followupDispatches' => $followupDispatches,
+            'dispatchStatus' => $dispatchStatus,
             'attachments' => $attachments,
             'showCosts' => auth()->user()?->can('financial.view') ?? false,
             'hasPendingValuation' => array_filter($items, static fn (array $item): bool => (float) $item['remaining_valuation'] > 0) !== [],
@@ -121,6 +128,8 @@ final class MovementController extends BaseController
         $builder = db_connect()->table('materials')
             ->select('materials.id, materials.code, materials.name, materials.minimum_stock, materials.allows_fraction, measurement_units.symbol AS unit_symbol, warehouses.id AS warehouse_id, warehouses.name AS warehouse_name')
             ->select(new RawSql('COALESCE(inventory_stocks.quantity, 0) AS quantity'))
+            ->select(new RawSql("COALESCE((SELECT SUM(r.remaining_quantity) FROM inventory_reservations r WHERE r.material_id = materials.id AND r.warehouse_id = warehouses.id AND r.status = 'ACTIVE'), 0) AS reserved_quantity"))
+            ->select(new RawSql("COALESCE(inventory_stocks.quantity, 0) - COALESCE((SELECT SUM(r.remaining_quantity) FROM inventory_reservations r WHERE r.material_id = materials.id AND r.warehouse_id = warehouses.id AND r.status = 'ACTIVE'), 0) AS available_quantity"))
             ->select(new RawSql('COALESCE(inventory_stocks.valued_quantity, 0) AS valued_quantity'))
             ->select('inventory_stocks.average_unit_cost, inventory_stocks.total_value')
             ->join('measurement_units', 'measurement_units.id = materials.unit_id')
@@ -187,6 +196,18 @@ final class MovementController extends BaseController
     /** @return array<string, mixed> */
     private function formData(string $type): array
     {
+        $dispatchRequest = null;
+        if ($type === 'EXIT' && (int) $this->request->getGet('dispatch_request_id') > 0) {
+            $requestId = (int) $this->request->getGet('dispatch_request_id');
+            $request = db_connect()->table('dispatch_requests r')
+                ->select('r.*, d.name AS destination_name, d.document_number AS destination_identifier, d.address AS destination_address, d.route AS route_description')
+                ->join('recipients d', 'd.id = r.recipient_id')->where('r.id', $requestId)->where('r.status', 'APPROVED')->get()->getRowArray();
+            if ($request !== null) {
+                $request['items'] = db_connect()->table('dispatch_request_items')->where('request_id', $requestId)->orderBy('id')->get()->getResultArray();
+                $dispatchRequest = $request;
+            }
+        }
+
         return [
             'type'       => $type,
             'warehouses' => model(WarehouseModel::class)->where('active', true)->orderBy('name')->findAll(),
@@ -197,6 +218,8 @@ final class MovementController extends BaseController
             'suppliers'  => $type === 'ENTRY'
                 ? model(SupplierModel::class)->where('active', true)->orderBy('name')->findAll()
                 : [],
+            'recipients' => $type === 'EXIT' ? model(RecipientModel::class)->where('active', true)->orderBy('name')->findAll() : [],
+            'dispatchRequest' => $dispatchRequest,
         ];
     }
 
@@ -250,6 +273,8 @@ final class MovementController extends BaseController
     {
         return [
             'warehouse_id'                  => (int) $this->request->getPost('warehouse_id'),
+            'dispatch_request_id'           => $type === 'EXIT' ? $this->request->getPost('dispatch_request_id') : null,
+            'recipient_id'                  => $type === 'EXIT' ? $this->request->getPost('recipient_id') : null,
             'supplier_id'                   => $type === 'ENTRY' ? $this->request->getPost('supplier_id') : null,
             'document_number'               => $this->request->getPost('document_number'),
             'purchase_order_number'         => $type === 'ENTRY' ? $this->request->getPost('purchase_order_number') : null,
@@ -290,6 +315,7 @@ final class MovementController extends BaseController
         $requestedQuantities = (array) $this->request->getPost('requested_quantity');
         $costs = (array) $this->request->getPost('unit_cost');
         $reasons = (array) $this->request->getPost('no_cost_reason');
+        $requestItemIds = (array) $this->request->getPost('request_item_id');
         $items = [];
         foreach ($materialIds as $index => $materialId) {
             if ((string) $materialId === '') {
@@ -299,6 +325,7 @@ final class MovementController extends BaseController
                 'material_id'   => $materialId,
                 'quantity'      => $quantities[$index] ?? '',
                 'requested_quantity' => $withCost ? null : ($requestedQuantities[$index] ?? ''),
+                'request_item_id' => $withCost ? null : ($requestItemIds[$index] ?? null),
                 'unit_cost'     => $withCost ? ($costs[$index] ?? null) : null,
                 'no_cost_reason'=> $withCost ? ($reasons[$index] ?? null) : null,
             ];

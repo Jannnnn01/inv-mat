@@ -90,6 +90,13 @@ $routes->group('catalogos', ['filter' => $catalogBaseFilters], static function (
     $routes->post('proveedores/(:num)', 'Catalogs\SupplierController::update/$1', ['as' => 'suppliers-update', 'filter' => 'permission:suppliers.update']);
     $routes->post('proveedores/(:num)/estado', 'Catalogs\SupplierController::toggle/$1', ['as' => 'suppliers-toggle', 'filter' => 'permission:suppliers.deactivate']);
 
+    $routes->get('destinatarios', 'Catalogs\RecipientController::index', ['as' => 'recipients', 'filter' => 'permission:recipients.view']);
+    $routes->get('destinatarios/nuevo', 'Catalogs\RecipientController::new', ['as' => 'recipients-new', 'filter' => 'permission:recipients.manage']);
+    $routes->post('destinatarios', 'Catalogs\RecipientController::create', ['as' => 'recipients-create', 'filter' => 'permission:recipients.manage']);
+    $routes->get('destinatarios/(:num)/editar', 'Catalogs\RecipientController::edit/$1', ['as' => 'recipients-edit', 'filter' => 'permission:recipients.manage']);
+    $routes->post('destinatarios/(:num)', 'Catalogs\RecipientController::update/$1', ['as' => 'recipients-update', 'filter' => 'permission:recipients.manage']);
+    $routes->post('destinatarios/(:num)/estado', 'Catalogs\RecipientController::toggle/$1', ['as' => 'recipients-toggle', 'filter' => 'permission:recipients.manage']);
+
     $routes->get('materiales', 'Catalogs\MaterialController::index', ['as' => 'materials', 'filter' => 'permission:materials.view']);
     $routes->get('materiales/nuevo', 'Catalogs\MaterialController::new', ['as' => 'materials-new', 'filter' => 'permission:materials.create']);
     $routes->post('materiales', 'Catalogs\MaterialController::create', ['as' => 'materials-create', 'filter' => 'permission:materials.create']);
@@ -116,6 +123,12 @@ $routes->group('inventario', ['filter' => $catalogBaseFilters], static function 
     $routes->get('despachos/pendientes', 'Inventory\DispatchController::pending', ['as' => 'inventory-dispatch-pending', 'filter' => 'permission:inventory.movements.view']);
     $routes->get('despachos/(:num)/entrega', 'Inventory\DispatchController::newDelivery/$1', ['as' => 'inventory-dispatch-delivery-new', 'filter' => 'permission:inventory.exits.create']);
     $routes->post('despachos/(:num)/entrega', 'Inventory\DispatchController::createDelivery/$1', ['as' => 'inventory-dispatch-delivery-create', 'filter' => 'permission:inventory.exits.create']);
+    $routes->get('despachos/(:num)/guia.pdf', 'Inventory\DispatchController::pdf/$1', ['as' => 'inventory-dispatch-pdf', 'filter' => 'permission:inventory.movements.view']);
+    $routes->get('requisiciones', 'Inventory\DispatchRequestController::index', ['as' => 'dispatch-requests', 'filter' => 'permission:inventory.dispatch_requests.create']);
+    $routes->get('requisiciones/nueva', 'Inventory\DispatchRequestController::new', ['as' => 'dispatch-requests-new', 'filter' => 'permission:inventory.dispatch_requests.create']);
+    $routes->post('requisiciones', 'Inventory\DispatchRequestController::create', ['as' => 'dispatch-requests-create', 'filter' => 'permission:inventory.dispatch_requests.create']);
+    $routes->get('requisiciones/(:num)', 'Inventory\DispatchRequestController::show/$1', ['as' => 'dispatch-request-show', 'filter' => 'permission:inventory.dispatch_requests.create']);
+    $routes->post('requisiciones/(:num)/decision', 'Inventory\DispatchRequestController::decide/$1', ['as' => 'dispatch-request-decide', 'filter' => 'permission:inventory.dispatch_requests.approve']);
     $routes->post('movimientos/(:num)/solicitar-reversion', 'Inventory\RequestController::createReversal/$1', ['as' => 'inventory-reversal-request', 'filter' => 'permission:inventory.reversals.request']);
 
     $routes->get('solicitudes', 'Inventory\RequestController::index', ['as' => 'inventory-requests', 'filter' => 'permission:inventory.adjustments.request']);

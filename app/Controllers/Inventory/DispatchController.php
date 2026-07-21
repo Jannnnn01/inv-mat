@@ -8,10 +8,47 @@ use App\Controllers\BaseController;
 use App\Services\InventoryMovementService;
 use CodeIgniter\HTTP\RedirectResponse;
 use DomainException;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Throwable;
 
 final class DispatchController extends BaseController
 {
+    public function pdf(int $dispatchId)
+    {
+        $dispatch = db_connect()->table('inventory_dispatch_notes dn')
+            ->select('dn.*, mv.id AS movement_id, mv.movement_number, mv.reason, mv.delivered_by_name, mv.received_by_name, mv.received_by_area_name, w.name AS warehouse_name')
+            ->join('inventory_movements mv', 'mv.id = dn.movement_id')->join('warehouses w', 'w.id = mv.warehouse_id')
+            ->where('dn.id', $dispatchId)->get()->getRowArray();
+        if ($dispatch === null) {
+            return redirect()->route('inventory-movements')->with('error', 'La guía no existe.');
+        }
+        $items = db_connect()->query(<<<'SQL'
+SELECT m.code, m.name, u.symbol AS unit_symbol, di.requested_quantity,
+       di.delivered_quantity + COALESCE((SELECT SUM(c.delivered_quantity) FROM inventory_dispatch_items c JOIN inventory_dispatch_notes cn ON cn.id=c.dispatch_note_id WHERE c.source_dispatch_item_id=di.id AND NOT EXISTS (SELECT 1 FROM inventory_movements r WHERE r.original_movement_id=cn.movement_id)),0) AS delivered_quantity,
+       di.requested_quantity - di.delivered_quantity - COALESCE((SELECT SUM(c.delivered_quantity) FROM inventory_dispatch_items c JOIN inventory_dispatch_notes cn ON cn.id=c.dispatch_note_id WHERE c.source_dispatch_item_id=di.id AND NOT EXISTS (SELECT 1 FROM inventory_movements r WHERE r.original_movement_id=cn.movement_id)),0) AS pending_quantity
+FROM inventory_dispatch_items di JOIN materials m ON m.id=di.material_id JOIN measurement_units u ON u.id=m.unit_id
+WHERE di.dispatch_note_id=? ORDER BY m.name
+SQL, [$dispatchId])->getResultArray();
+        $reversed = db_connect()->table('inventory_movements')->where('original_movement_id', $dispatch['movement_id'])->where('type', 'REVERSAL')->countAllResults() > 0;
+        $pending = array_sum(array_map(static fn (array $item): float => (float) $item['pending_quantity'], $items));
+        $status = $reversed ? 'ANULADA' : ($pending > 0 ? 'PARCIAL' : 'COMPLETADA');
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', false);
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml(view('inventory/dispatches/pdf', [
+            'dispatch' => $dispatch, 'items' => $items, 'status' => $status,
+            'verificationUrl' => url_to('inventory-movement-show', $dispatch['movement_id']),
+        ]), 'UTF-8');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        return $this->response->setHeader('Content-Type', 'application/pdf')
+            ->setHeader('Content-Disposition', 'inline; filename="guia-' . preg_replace('/[^A-Za-z0-9-]/', '-', (string) $dispatch['guide_number']) . '.pdf"')
+            ->setBody($dompdf->output());
+    }
+
     public function pending(): string
     {
         $records = db_connect()->query(<<<'SQL'
@@ -84,7 +121,7 @@ SQL)->getResultArray();
             $movementId = (new InventoryMovementService())->createExit([
                 'warehouse_id'              => $data['dispatch']['warehouse_id'],
                 'source_dispatch_note_id'   => $dispatchId,
-                'document_number'           => $this->request->getPost('document_number'),
+                'document_number'           => null,
                 'document_date'             => $this->request->getPost('document_date'),
                 'reason'                    => $this->request->getPost('reason'),
                 'observations'              => $this->request->getPost('observations'),

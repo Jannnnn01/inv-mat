@@ -114,3 +114,24 @@ document.querySelectorAll('[data-password-toggle]').forEach((button) => {
         button.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
     });
 });
+
+document.querySelectorAll('[data-recipient-select]').forEach((select) => {
+    select.addEventListener('change', () => {
+        const option = select.selectedOptions[0];
+        if (!option?.value) {
+            return;
+        }
+        const values = {
+            destination_name: option.dataset.name,
+            destination_identifier: option.dataset.document,
+            destination_address: option.dataset.address,
+            route_description: option.dataset.route,
+        };
+        Object.entries(values).forEach(([id, value]) => {
+            const input = document.getElementById(id);
+            if (input instanceof HTMLInputElement) {
+                input.value = value ?? '';
+            }
+        });
+    });
+});
