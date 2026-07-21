@@ -11,12 +11,11 @@ final class PublicRoutesTest extends CIUnitTestCase
 {
     use FeatureTestTrait;
 
-    public function testHomeRouteIsAvailable(): void
+    public function testHomeRouteRedirectsVisitorsToLogin(): void
     {
         $result = $this->get('/');
 
-        $result->assertOK();
-        $result->assertSee('Inventario de materiales');
+        $result->assertRedirectTo('/login');
     }
 
     public function testHealthRouteReturnsOnlyOperationalStatus(): void
