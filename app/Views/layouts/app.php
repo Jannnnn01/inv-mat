@@ -22,8 +22,10 @@ $navSections = [
         'items' => [
             ['label' => 'Dashboard', 'route' => 'dashboard', 'permission' => 'dashboard.view', 'matches' => ['dashboard'], 'icon' => 'D'],
             ['label' => 'Existencias', 'route' => 'inventory-stocks', 'permission' => 'stock.view', 'matches' => ['inventario/existencias'], 'icon' => 'E'],
+            ['label' => 'Alertas', 'route' => 'inventory-alerts', 'permission' => 'stock.view', 'matches' => ['inventario/alertas'], 'icon' => 'A'],
+            ['label' => 'Valoraciones', 'route' => 'inventory-valuations', 'permission' => 'financial.view', 'matches' => ['inventario/valoraciones'], 'icon' => 'V'],
             ['label' => 'Movimientos', 'route' => 'inventory-movements', 'permission' => 'inventory.movements.view', 'matches' => ['inventario/movimientos'], 'icon' => 'M'],
-            ['label' => 'Solicitudes', 'route' => 'inventory-requests', 'permission' => 'inventory.movements.view', 'matches' => ['inventario/solicitudes'], 'icon' => 'S'],
+            ['label' => 'Solicitudes', 'route' => 'inventory-requests', 'permission' => 'inventory.adjustments.request', 'matches' => ['inventario/solicitudes'], 'icon' => 'S'],
         ],
     ],
     [

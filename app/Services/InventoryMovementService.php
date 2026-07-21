@@ -620,7 +620,7 @@ SQL, [$materialId, $warehouseId, $now, $now]);
         if ($cost === '') {
             return null;
         }
-        if (! preg_match('/\A\d{1,12}(?:\.\d{1,6})?\z/', $cost)) {
+        if (! preg_match('/\A\d{1,12}(?:\.\d{1,6})?\z/', $cost) || (float) $cost <= 0) {
             throw new DomainException('El costo unitario debe ser positivo y tener máximo seis decimales.');
         }
 

@@ -62,4 +62,11 @@ final class PublicRoutesTest extends CIUnitTestCase
 
         $this->delete('/inventario/movimientos/1');
     }
+
+    public function testValuationEventsHaveNoDeleteEndpoint(): void
+    {
+        $this->expectException(PageNotFoundException::class);
+
+        $this->delete('/inventario/valoraciones/1');
+    }
 }
