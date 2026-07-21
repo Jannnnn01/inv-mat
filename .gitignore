@@ -1,6 +1,9 @@
 # Dependencias
 /vendor/
 /node_modules/
+/composer.phar
+/composer-setup.php
+/composer-setup.sig
 
 # Configuracion local y secretos
 /.env
@@ -25,6 +28,7 @@ npm-debug.log*
 !/writable/session/index.html
 /writable/uploads/*
 !/writable/uploads/index.html
+/writable/postgres-local/
 
 # Sistema operativo y editores
 .DS_Store

@@ -4,7 +4,7 @@
   "scripts": {
     "build": "node scripts/build-assets.mjs",
     "build:css": "sass --quiet-deps --silence-deprecation=import --load-path=node_modules --no-source-map --style=compressed resources/scss/app.scss public/assets/build/app.css",
-    "build:js": "esbuild resources/js/app.js --bundle --minify --outfile=public/assets/build/app.js"
+    "build:js": "node scripts/build-js.mjs"
   },
   "dependencies": {
     "@popperjs/core": "2.11.8",
