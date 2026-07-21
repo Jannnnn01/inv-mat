@@ -30,7 +30,7 @@
     <div class="row g-2 align-items-end inventory-item-row mb-3">
         <div class="col-lg-<?= $isEntry ? '4' : '7' ?>"><label class="form-label">Material</label><select class="form-select" name="material_id[]" required><option value="">Selecciona...</option><?php foreach ($materials as $material): ?><option value="<?= esc((string) $material['id']) ?>"><?= esc($material['code'] . ' - ' . $material['name'] . ' (' . $material['unit_symbol'] . ')') ?></option><?php endforeach ?></select></div>
         <div class="col-lg-2"><label class="form-label">Cantidad</label><input class="form-control" type="number" name="quantity[]" min="0.001" max="99999999999.999" step="0.001" required></div>
-        <?php if ($isEntry): ?><div class="col-lg-2"><label class="form-label">Costo unitario</label><input class="form-control" type="number" name="unit_cost[]" min="0" max="999999999999.999999" step="0.000001"></div><div class="col-lg-3"><label class="form-label">Motivo sin costo</label><input class="form-control" name="no_cost_reason[]" maxlength="500" placeholder="Obligatorio si no hay costo"></div><?php endif ?>
+        <?php if ($isEntry): ?><div class="col-lg-2"><label class="form-label">Costo unitario</label><input class="form-control" type="number" name="unit_cost[]" min="0.000001" max="999999999999.999999" step="0.000001"></div><div class="col-lg-3"><label class="form-label">Motivo sin costo</label><input class="form-control" name="no_cost_reason[]" maxlength="500" placeholder="Obligatorio si no hay costo"></div><?php endif ?>
         <div class="col-lg-1"><button class="btn btn-outline-danger w-100" type="button" data-remove-inventory-row aria-label="Quitar material">×</button></div>
     </div>
 </div>

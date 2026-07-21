@@ -22,6 +22,7 @@ final class MaterialController extends BaseController
         $model = model(MaterialModel::class)
             ->select('materials.*, categories.name AS category_name, measurement_units.name AS unit_name, measurement_units.symbol AS unit_symbol')
             ->select(new RawSql('COALESCE((SELECT SUM(quantity) FROM inventory_stocks WHERE inventory_stocks.material_id = materials.id), 0) AS current_stock'))
+            ->select(new RawSql('COALESCE((SELECT COUNT(*) FROM warehouses w LEFT JOIN inventory_stocks s ON s.material_id = materials.id AND s.warehouse_id = w.id WHERE w.active = TRUE AND COALESCE(s.quantity, 0) <= materials.minimum_stock), 0) AS low_stock_warehouses'))
             ->join('categories', 'categories.id = materials.category_id')
             ->join('measurement_units', 'measurement_units.id = materials.unit_id');
 

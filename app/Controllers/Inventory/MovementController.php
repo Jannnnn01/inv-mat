@@ -28,6 +28,7 @@ final class MovementController extends BaseController
         $model = model(InventoryMovementModel::class)
             ->select('inventory_movements.*, warehouses.name AS warehouse_name, users.username AS created_by_name')
             ->select(new RawSql('CASE WHEN EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = inventory_movements.id) THEN 1 ELSE 0 END AS is_reversed'))
+            ->select(new RawSql("CASE WHEN EXISTS (SELECT 1 FROM inventory_movement_items pending_item WHERE pending_item.movement_id = inventory_movements.id AND pending_item.pending_valuation = TRUE AND (pending_item.direction = -1 OR pending_item.quantity > COALESCE((SELECT SUM(v.quantity_basis) FROM inventory_valuation_events v WHERE v.movement_item_id = pending_item.id AND v.event_type = 'ALLOCATION'), 0))) THEN 1 ELSE 0 END AS current_pending_valuation"))
             ->join('warehouses', 'warehouses.id = inventory_movements.warehouse_id')
             ->join('users', 'users.id = inventory_movements.created_by');
 
@@ -67,6 +68,7 @@ final class MovementController extends BaseController
 
         $items = model(InventoryMovementItemModel::class)
             ->select('inventory_movement_items.*, materials.code AS material_code, materials.name AS material_name, measurement_units.symbol AS unit_symbol')
+            ->select(new RawSql("CASE WHEN inventory_movement_items.direction = 1 THEN GREATEST(inventory_movement_items.quantity - COALESCE((SELECT SUM(v.quantity_basis) FROM inventory_valuation_events v WHERE v.movement_item_id = inventory_movement_items.id AND v.event_type = 'ALLOCATION'), 0), 0) ELSE CASE WHEN inventory_movement_items.pending_valuation THEN inventory_movement_items.quantity ELSE 0 END END AS remaining_valuation"))
             ->join('materials', 'materials.id = inventory_movement_items.material_id')
             ->join('measurement_units', 'measurement_units.id = materials.unit_id')
             ->where('movement_id', $id)
@@ -77,6 +79,7 @@ final class MovementController extends BaseController
             'movement'  => $movement,
             'items'     => $items,
             'showCosts' => auth()->user()?->can('financial.view') ?? false,
+            'hasPendingValuation' => array_filter($items, static fn (array $item): bool => (float) $item['remaining_valuation'] > 0) !== [],
         ]);
     }
 

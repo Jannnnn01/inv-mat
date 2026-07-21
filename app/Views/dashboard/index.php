@@ -1,28 +1,10 @@
 <?= $this->extend('layouts/app') ?>
-
 <?= $this->section('title') ?>Dashboard<?= $this->endSection() ?>
-
 <?= $this->section('main') ?>
 <?= $this->include('partials/flash') ?>
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-4">
-        <h1 class="h3">Dashboard</h1>
-        <p class="text-body-secondary">Gestiona existencias y movimientos de forma trazable por bodega.</p>
-        <div class="d-flex flex-wrap gap-2">
-            <?php if (auth()->user()?->can('stock.view')): ?>
-                <a class="btn btn-primary" href="<?= url_to('inventory-stocks') ?>">Ver existencias</a>
-            <?php endif ?>
-            <?php if (auth()->user()?->can('inventory.movements.view')): ?>
-                <a class="btn btn-outline-primary" href="<?= url_to('inventory-movements') ?>">Ver movimientos</a>
-            <?php endif ?>
-            <?php if (auth()->user()?->can('materials.view')): ?>
-                <a class="btn btn-outline-primary" href="<?= url_to('materials') ?>">Ver materiales</a>
-            <?php endif ?>
-            <?php if (auth()->user()?->can('users.manage')): ?>
-                <a class="btn btn-outline-primary" href="<?= url_to('admin-users') ?>">Gestionar usuarios</a>
-            <?php endif ?>
-            <a class="btn btn-outline-secondary" href="<?= url_to('account-password') ?>">Cambiar contraseña</a>
-        </div>
-    </div>
-</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"><div><h1 class="h3 mb-1">Resumen operativo</h1><p class="text-body-secondary mb-0">Estado actual del inventario institucional.</p></div><div class="d-flex gap-2"><?php if (auth()->user()?->can('inventory.entries.create')): ?><a class="btn btn-success" href="<?= url_to('inventory-entry-new') ?>">Nueva entrada</a><?php endif ?><?php if (auth()->user()?->can('inventory.exits.create')): ?><a class="btn btn-primary" href="<?= url_to('inventory-exit-new') ?>">Nueva salida</a><?php endif ?></div></div>
+<div class="row g-3 mb-4"><div class="col-sm-6 col-xl-3"><div class="card border-0 h-100"><div class="card-body"><p class="text-body-secondary mb-1">Materiales activos</p><p class="display-6 fw-bold mb-0"><?= esc((string) $indicators['activeMaterials']) ?></p></div></div></div><div class="col-sm-6 col-xl-3"><a class="card border-0 h-100 text-decoration-none" href="<?= url_to('inventory-alerts') ?>"><div class="card-body"><p class="text-body-secondary mb-1">Alertas de stock</p><p class="display-6 fw-bold text-danger mb-0"><?= esc((string) $indicators['lowStock']) ?></p></div></a></div><?php if (auth()->user()?->can('inventory.adjustments.request')): ?><div class="col-sm-6 col-xl-3"><a class="card border-0 h-100 text-decoration-none" href="<?= url_to('inventory-requests') ?>"><div class="card-body"><p class="text-body-secondary mb-1">Solicitudes pendientes</p><p class="display-6 fw-bold text-warning mb-0"><?= esc((string) $indicators['pendingRequests']) ?></p></div></a></div><?php endif ?><div class="col-sm-6 col-xl-3"><div class="card border-0 h-100"><div class="card-body"><p class="text-body-secondary mb-1">Movimientos últimos 30 días</p><p class="display-6 fw-bold mb-0"><?= esc((string) $indicators['recentMovements']) ?></p></div></div></div></div>
+<?php if ($showFinancial): ?><div class="alert alert-warning d-flex justify-content-between align-items-center"><span><strong><?= esc((string) $indicators['pendingValuations']) ?></strong> detalle(s) requieren valoración financiera.</span><a class="btn btn-sm btn-warning" href="<?= url_to('inventory-valuations') ?>">Revisar valoraciones</a></div><?php endif ?>
+<div class="row g-4"><div class="col-xl-6"><div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0">Stock bajo prioritario</h2><a href="<?= url_to('inventory-alerts') ?>">Ver todas</a></div><div class="card border-0"><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Material</th><th>Bodega</th><th class="text-end">Existencia</th></tr></thead><tbody><?php foreach ($lowStock as $record): ?><tr><td><?= esc($record['code'] . ' - ' . $record['name']) ?></td><td><?= esc($record['warehouse_name']) ?></td><td class="text-end text-danger fw-semibold"><?= esc(number_format((float) $record['quantity'], 3, ',', '.')) ?> <?= esc($record['unit_symbol']) ?></td></tr><?php endforeach ?><?php if ($lowStock === []): ?><tr><td colspan="3" class="text-center text-body-secondary py-4">Sin alertas activas.</td></tr><?php endif ?></tbody></table></div></div></div>
+<div class="col-xl-6"><div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0">Movimientos recientes</h2><a href="<?= url_to('inventory-movements') ?>">Ver historial</a></div><div class="card border-0"><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Número</th><th>Tipo</th><th>Bodega</th><th>Fecha</th></tr></thead><tbody><?php $labels = ['ENTRY'=>'Entrada','EXIT'=>'Salida','ADJUSTMENT'=>'Ajuste','REVERSAL'=>'Reversión']; ?><?php foreach ($recentMovements as $record): ?><tr><td><a class="font-monospace" href="<?= url_to('inventory-movement-show', $record['id']) ?>"><?= esc($record['movement_number']) ?></a></td><td><?= esc($labels[$record['type']] ?? $record['type']) ?></td><td><?= esc($record['warehouse_name']) ?></td><td><?= esc($record['created_at']) ?></td></tr><?php endforeach ?><?php if ($recentMovements === []): ?><tr><td colspan="4" class="text-center text-body-secondary py-4">Todavía no hay movimientos.</td></tr><?php endif ?></tbody></table></div></div></div></div>
 <?= $this->endSection() ?>

@@ -53,6 +53,9 @@ final class CatalogRulesTest extends CIUnitTestCase
         $this->assertNotContains('inventory.reversals.approve', $groups->matrix['warehouse']);
         $this->assertNotContains('financial.view', $groups->matrix['warehouse']);
         $this->assertNotContains('inventory.entries.create', $groups->matrix['viewer']);
+        $this->assertContains('financial.*', $groups->matrix['admin']);
+        $this->assertNotContains('financial.manage', $groups->matrix['warehouse']);
+        $this->assertNotContains('financial.view', $groups->matrix['viewer']);
     }
 
     public function testUnknownCatalogIsRejectedBeforeDatabaseAccess(): void

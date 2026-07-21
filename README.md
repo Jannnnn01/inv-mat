@@ -81,6 +81,8 @@ Las rutas principales de autenticacion son:
 - `/inventario/existencias`: stock físico por material y bodega.
 - `/inventario/movimientos`: entradas, salidas e historial inmutable.
 - `/inventario/solicitudes`: solicitudes de ajustes y reversiones.
+- `/inventario/alertas`: alertas de stock bajo por material y bodega.
+- `/inventario/valoraciones`: completar y corregir valoraciones, solo con permisos financieros.
 
 Para Apache/XAMPP o Laragon, el document root debe apuntar exclusivamente a `public/`.
 
@@ -117,9 +119,11 @@ npm audit
 - Costo promedio ponderado con existencia física y valorada separadas.
 - Entradas sin costo almacenadas como pendientes de valoración y con motivo obligatorio.
 - Ajustes y reversiones con solicitante y aprobador diferentes.
+- Eventos financieros inmutables para completar o corregir costos sin alterar movimientos.
+- Dashboard operativo y alertas derivadas del stock real por bodega.
 - Errores internos ocultos en produccion.
 - Configuracion sensible mediante variables de entorno.
 
 ## Estado
 
-Fases 1 a 4 implementadas: base técnica, autenticación, roles, usuarios, catálogos, existencias, entradas, salidas, movimientos inmutables y solicitudes de ajuste o reversión. Permanecen pendientes adjuntos, auditoría general, reportes, despliegue y operación productiva.
+Fases 1 a 5 implementadas: base técnica, autenticación, roles, usuarios, catálogos, existencias, movimientos, solicitudes, dashboard, alertas y valoración financiera inmutable. Permanecen pendientes adjuntos, auditoría general, reportes, despliegue y operación productiva.

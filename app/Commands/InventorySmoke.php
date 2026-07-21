@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Services\InventoryMovementService;
+use App\Services\InventoryValuationService;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 use CodeIgniter\Database\Exceptions\DatabaseException;
@@ -58,8 +59,18 @@ final class InventorySmoke extends BaseCommand
             ];
             $service = new InventoryMovementService($db);
             $firstMovementId = $service->createEntry($header, [['material_id' => $materialId, 'quantity' => '10.000', 'unit_cost' => '2.500000']], (int) $user['id']);
-            $service->createEntry($header, [['material_id' => $materialId, 'quantity' => '5.000', 'unit_cost' => null, 'no_cost_reason' => 'Prueba sin valoración']], (int) $user['id']);
+            $pendingMovementId = $service->createEntry($header, [['material_id' => $materialId, 'quantity' => '5.000', 'unit_cost' => null, 'no_cost_reason' => 'Prueba sin valoración']], (int) $user['id']);
             $exitMovementId = $service->createExit($header + ['reason' => 'Prueba de salida'], [['material_id' => $materialId, 'quantity' => '12.000']], (int) $user['id']);
+
+            $pendingItem = $db->table('inventory_movement_items')->where('movement_id', $pendingMovementId)->get()->getRowArray();
+            $valuationService = new InventoryValuationService($db);
+            $valuationId = $valuationService->complete(
+                (int) $pendingItem['id'],
+                '5.000',
+                '4.000000',
+                'Valoración temporal completa',
+                (int) $user['id'],
+            );
 
             $adjustmentRequestId = $service->requestAdjustment(
                 (int) $warehouse['id'],
@@ -77,14 +88,21 @@ final class InventorySmoke extends BaseCommand
 
             $reversalRequestId = $service->requestReversal($exitMovementId, 'Reversión temporal de prueba', (int) $user['id']);
             $service->decideRequest($reversalRequestId, true, 'Reversión verificada', $approverId);
+            $valuationService->correct(
+                $valuationId,
+                '5.000000',
+                'Corrección temporal de costo',
+                (int) $user['id'],
+            );
 
             $stock = $db->table('inventory_stocks')->where('material_id', $materialId)->where('warehouse_id', $warehouse['id'])->get()->getRowArray();
             $passed = $stock !== null
                 && (string) $stock['quantity'] === '17.000'
-                && (string) $stock['valued_quantity'] === '12.000'
-                && (float) $stock['total_value'] === 31.0
+                && (string) $stock['valued_quantity'] === '15.000'
+                && (float) $stock['total_value'] === 46.0
                 && $db->table('inventory_movements')->whereIn('id', [$firstMovementId, $exitMovementId])->countAllResults() === 2
-                && $db->table('inventory_requests')->whereIn('id', [$adjustmentRequestId, $reversalRequestId])->where('status', 'EXECUTED')->countAllResults() === 2;
+                && $db->table('inventory_requests')->whereIn('id', [$adjustmentRequestId, $reversalRequestId])->where('status', 'EXECUTED')->countAllResults() === 2
+                && $db->table('inventory_valuation_events')->where('movement_item_id', $pendingItem['id'])->countAllResults() === 2;
             if (! $passed) {
                 throw new \RuntimeException('El saldo transaccional no coincide con el esperado.');
             }
@@ -99,7 +117,7 @@ final class InventorySmoke extends BaseCommand
                 throw new \RuntimeException('La base permitió modificar un movimiento histórico.');
             }
 
-            CLI::write('SMOKE_OK: movimientos, valoración, ajuste, segregación, reversión e inmutabilidad verificados.', 'green');
+            CLI::write('SMOKE_OK: movimientos, valoración, corrección, ajuste, segregación, reversión e inmutabilidad verificados.', 'green');
         } finally {
             $db->transRollback();
         }

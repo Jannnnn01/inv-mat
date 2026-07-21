@@ -93,6 +93,10 @@ $routes->group('catalogos', ['filter' => $catalogBaseFilters], static function (
 
 $routes->group('inventario', ['filter' => $catalogBaseFilters], static function (RouteCollection $routes): void {
     $routes->get('existencias', 'Inventory\MovementController::stocks', ['as' => 'inventory-stocks', 'filter' => 'permission:stock.view']);
+    $routes->get('alertas', 'Inventory\AlertController::index', ['as' => 'inventory-alerts', 'filter' => 'permission:stock.view']);
+    $routes->get('valoraciones', 'Inventory\ValuationController::index', ['as' => 'inventory-valuations', 'filter' => 'permission:financial.view']);
+    $routes->post('valoraciones/detalles/(:num)', 'Inventory\ValuationController::complete/$1', ['as' => 'inventory-valuation-complete', 'filter' => 'permission:financial.manage']);
+    $routes->post('valoraciones/(:num)/correccion', 'Inventory\ValuationController::correct/$1', ['as' => 'inventory-valuation-correct', 'filter' => 'permission:financial.manage']);
     $routes->get('movimientos', 'Inventory\MovementController::index', ['as' => 'inventory-movements', 'filter' => 'permission:inventory.movements.view']);
     $routes->get('movimientos/entrada/nueva', 'Inventory\MovementController::newEntry', ['as' => 'inventory-entry-new', 'filter' => 'permission:inventory.entries.create']);
     $routes->post('movimientos/entrada', 'Inventory\MovementController::createEntry', ['as' => 'inventory-entry-create', 'filter' => 'permission:inventory.entries.create']);
