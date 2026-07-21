@@ -164,13 +164,18 @@ SQL, [$sourceDispatchItem['id']])->getRowArray();
                 throw new \RuntimeException('El saldo transaccional no coincide con el esperado.');
             }
 
-            $immutable = false;
+            $immutabilityError = '';
             try {
-                $db->table('inventory_movements')->where('id', $firstMovementId)->update(['reason' => 'Cambio prohibido']);
-            } catch (DatabaseException) {
-                $immutable = true;
+                $updated = $db->table('inventory_movements')
+                    ->where('id', $firstMovementId)
+                    ->update(['reason' => 'Cambio prohibido']);
+                if ($updated === false) {
+                    $immutabilityError = (string) ($db->error()['message'] ?? '');
+                }
+            } catch (DatabaseException $exception) {
+                $immutabilityError = $exception->getMessage();
             }
-            if (! $immutable) {
+            if (! str_contains($immutabilityError, 'Los movimientos de inventario son inmutables')) {
                 throw new \RuntimeException('La base permitió modificar un movimiento histórico.');
             }
 
