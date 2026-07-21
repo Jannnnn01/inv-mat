@@ -76,6 +76,7 @@ $navSections = [
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Sistema institucional de inventario">
     <title><?= esc($pageTitle) ?> | Inventario</title>
+    <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/brand/inventory-mark.svg?v=2') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/build/app.css') ?>">
 </head>
 <body class="app-layout bg-body-tertiary">
@@ -85,10 +86,7 @@ $navSections = [
         <div class="app-sidebar-header">
             <a class="app-brand" href="<?= url_to('dashboard') ?>" id="appSidebarLabel" aria-label="Ir al dashboard">
                 <span class="app-brand-mark" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="m4 7 8-4 8 4-8 4-8-4Z"></path>
-                        <path d="M4 7v10l8 4 8-4V7M12 11v10"></path>
-                    </svg>
+                    <img src="<?= base_url('assets/brand/inventory-mark.svg') ?>" alt="" width="40" height="40">
                 </span>
                 <span class="app-brand-text">
                     <span>Inventario</span>
