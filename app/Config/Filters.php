@@ -3,6 +3,7 @@
 namespace Config;
 
 use App\Filters\ActiveUserFilter;
+use App\Filters\AuditFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -54,6 +55,7 @@ class Filters extends BaseFilters
         'force-reset'   => ForcePasswordResetFilter::class,
         'jwt'           => JWTAuth::class,
         'active-user'   => ActiveUserFilter::class,
+        'audit'         => AuditFilter::class,
     ];
 
     /**
@@ -94,9 +96,11 @@ class Filters extends BaseFilters
         'before' => [
             'csrf',
             'invalidchars',
+            'audit',
         ],
         'after' => [
             'secureheaders',
+            'audit',
         ],
     ];
 

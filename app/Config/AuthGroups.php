@@ -58,6 +58,7 @@ class AuthGroups extends ShieldAuthGroups
         'warehouses.manage'                  => 'Gestionar bodegas.',
         'files.upload'                       => 'Cargar archivos permitidos.',
         'files.download'                     => 'Descargar archivos autorizados.',
+        'files.archive'                      => 'Archivar lógicamente archivos cargados.',
         'audit.view'                         => 'Consultar auditoria.',
         'audit.sensitive'                    => 'Consultar IP y datos protegidos de auditoria.',
         'security.manage'                    => 'Modificar configuracion de seguridad.',

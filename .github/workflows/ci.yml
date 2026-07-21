@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: PHP, frontend and PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: inv_mat_ci
+          POSTGRES_USER: inv_mat_ci
+          POSTGRES_PASSWORD: inv_mat_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U inv_mat_ci -d inv_mat_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_ENVIRONMENT: development
+      DATABASE_URL: postgresql://inv_mat_ci:inv_mat_ci@127.0.0.1:5432/inv_mat_ci?sslmode=disable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: intl, mbstring, pgsql, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Audit PHP dependencies
+        run: composer audit --no-interaction
+
+      - name: Lint application PHP
+        run: find app tests ops -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Run PHPUnit
+        run: composer test
+
+      - name: Migrate clean PostgreSQL database
+        run: php spark migrate --all
+
+      - name: Seed base catalogs
+        run: php spark db:seed InitialCatalogSeeder
+
+      - name: Run reversible inventory smoke test
+        run: php spark invmat:inventory:smoke
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
+
+      - name: Build frontend
+        run: npm run build
+
+  container:
+    name: Production container
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Build Docker image
+        run: docker build --pull --tag inv-mat:ci .

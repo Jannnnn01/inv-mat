@@ -83,8 +83,20 @@ document.querySelectorAll('[data-inventory-form]').forEach((form) => {
     });
 
     form.addEventListener('submit', () => {
+        form.setAttribute('aria-busy', 'true');
         form.querySelectorAll('button[type="submit"]').forEach((button) => {
+            button.classList.add('is-loading');
             button.disabled = true;
         });
+    });
+});
+
+document.querySelectorAll('[data-loading-form]:not([data-inventory-form])').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+        form.setAttribute('aria-busy', 'true');
+
+        if (event.submitter instanceof HTMLButtonElement) {
+            event.submitter.classList.add('is-loading');
+        }
     });
 });

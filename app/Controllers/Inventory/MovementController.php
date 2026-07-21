@@ -29,6 +29,7 @@ final class MovementController extends BaseController
             ->select('inventory_movements.*, warehouses.name AS warehouse_name, users.username AS created_by_name')
             ->select(new RawSql('CASE WHEN EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = inventory_movements.id) THEN 1 ELSE 0 END AS is_reversed'))
             ->select(new RawSql("CASE WHEN EXISTS (SELECT 1 FROM inventory_movement_items pending_item WHERE pending_item.movement_id = inventory_movements.id AND pending_item.pending_valuation = TRUE AND (pending_item.direction = -1 OR pending_item.quantity > COALESCE((SELECT SUM(v.quantity_basis) FROM inventory_valuation_events v WHERE v.movement_item_id = pending_item.id AND v.event_type = 'ALLOCATION'), 0))) THEN 1 ELSE 0 END AS current_pending_valuation"))
+            ->select(new RawSql("CASE WHEN EXISTS (SELECT 1 FROM inventory_dispatch_notes dn JOIN inventory_dispatch_items di ON di.dispatch_note_id = dn.id WHERE dn.movement_id = inventory_movements.id AND NOT EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = inventory_movements.id) AND ((di.source_dispatch_item_id IS NULL AND di.requested_quantity > di.delivered_quantity + COALESCE((SELECT SUM(child.delivered_quantity) FROM inventory_dispatch_items child JOIN inventory_dispatch_notes child_note ON child_note.id = child.dispatch_note_id WHERE child.source_dispatch_item_id = di.id AND NOT EXISTS (SELECT 1 FROM inventory_movements child_reversal WHERE child_reversal.original_movement_id = child_note.movement_id)), 0)) OR (di.source_dispatch_item_id IS NOT NULL AND di.status <> 'DELIVERED'))) THEN 1 ELSE 0 END AS has_pending_dispatch"))
             ->join('warehouses', 'warehouses.id = inventory_movements.warehouse_id')
             ->join('users', 'users.id = inventory_movements.created_by');
 
@@ -75,9 +76,40 @@ final class MovementController extends BaseController
             ->orderBy('materials.name')
             ->findAll();
 
+        $dispatch = db_connect()->table('inventory_dispatch_notes')->where('movement_id', $id)->get()->getRowArray();
+        $dispatchItems = $dispatch === null ? [] : db_connect()->table('inventory_dispatch_items di')
+            ->select('di.*, materials.code AS material_code, materials.name AS material_name, measurement_units.symbol AS unit_symbol')
+            ->select(new RawSql('di.delivered_quantity + COALESCE((SELECT SUM(child.delivered_quantity) FROM inventory_dispatch_items child JOIN inventory_dispatch_notes child_note ON child_note.id = child.dispatch_note_id WHERE child.source_dispatch_item_id = di.id AND NOT EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = child_note.movement_id)), 0) AS effective_delivered_quantity'))
+            ->select(new RawSql('GREATEST(di.requested_quantity - di.delivered_quantity - COALESCE((SELECT SUM(child.delivered_quantity) FROM inventory_dispatch_items child JOIN inventory_dispatch_notes child_note ON child_note.id = child.dispatch_note_id WHERE child.source_dispatch_item_id = di.id AND NOT EXISTS (SELECT 1 FROM inventory_movements reversal WHERE reversal.original_movement_id = child_note.movement_id)), 0), 0) AS effective_pending_quantity'))
+            ->join('materials', 'materials.id = di.material_id')
+            ->join('measurement_units', 'measurement_units.id = materials.unit_id')
+            ->where('di.dispatch_note_id', $dispatch['id'])
+            ->orderBy('materials.name')
+            ->get()->getResultArray();
+        $sourceDispatch = $dispatch !== null && $dispatch['source_dispatch_note_id'] !== null
+            ? db_connect()->table('inventory_dispatch_notes dn')->select('dn.id, dn.guide_number, mv.id AS movement_id, mv.movement_number')->join('inventory_movements mv', 'mv.id = dn.movement_id')->where('dn.id', $dispatch['source_dispatch_note_id'])->get()->getRowArray()
+            : null;
+        $followupDispatches = $dispatch === null ? [] : db_connect()->table('inventory_dispatch_notes dn')
+            ->select('dn.id, dn.guide_number, dn.issue_date, mv.id AS movement_id, mv.movement_number')
+            ->join('inventory_movements mv', 'mv.id = dn.movement_id')
+            ->where('dn.source_dispatch_note_id', $dispatch['id'])
+            ->orderBy('dn.id')
+            ->get()->getResultArray();
+        $attachments = db_connect()->table('inventory_attachments a')
+            ->select('a.*, users.username AS uploaded_by_name')
+            ->join('users', 'users.id = a.uploaded_by')
+            ->where('a.movement_id', $id)
+            ->orderBy('a.id', 'DESC')
+            ->get()->getResultArray();
+
         return view('inventory/movements/show', [
             'movement'  => $movement,
             'items'     => $items,
+            'dispatch'  => $dispatch,
+            'dispatchItems' => $dispatchItems,
+            'sourceDispatch' => $sourceDispatch,
+            'followupDispatches' => $followupDispatches,
+            'attachments' => $attachments,
             'showCosts' => auth()->user()?->can('financial.view') ?? false,
             'hasPendingValuation' => array_filter($items, static fn (array $item): bool => (float) $item['remaining_valuation'] > 0) !== [],
         ]);
@@ -92,7 +124,7 @@ final class MovementController extends BaseController
             ->select(new RawSql('COALESCE(inventory_stocks.valued_quantity, 0) AS valued_quantity'))
             ->select('inventory_stocks.average_unit_cost, inventory_stocks.total_value')
             ->join('measurement_units', 'measurement_units.id = materials.unit_id')
-            ->join('warehouses', 'warehouses.active = TRUE')
+            ->join('warehouses', 'warehouses.active = TRUE', 'inner', false)
             ->join('inventory_stocks', 'inventory_stocks.material_id = materials.id AND inventory_stocks.warehouse_id = warehouses.id', 'left')
             ->where('materials.active', true);
         if ($warehouseId > 0) {
@@ -191,6 +223,23 @@ final class MovementController extends BaseController
         } else {
             $rules['reason'] = ['label' => 'Motivo', 'rules' => 'required|min_length[5]|max_length[1000]'];
             $rules['received_by_area_name'] = ['label' => 'Área receptora', 'rules' => 'required|max_length[160]'];
+            $rules += [
+                'authorization_number'    => ['label' => 'Autorización', 'rules' => 'permit_empty|max_length[100]'],
+                'start_date'              => ['label' => 'Fecha de inicio', 'rules' => 'permit_empty|valid_date[Y-m-d]'],
+                'end_date'                => ['label' => 'Fecha de fin', 'rules' => 'permit_empty|valid_date[Y-m-d]'],
+                'issuer_name'             => ['label' => 'Emisor', 'rules' => 'permit_empty|max_length[180]'],
+                'issuer_tax_identifier'   => ['label' => 'Identificación del emisor', 'rules' => 'permit_empty|max_length[30]'],
+                'transporter_name'        => ['label' => 'Transportista', 'rules' => 'permit_empty|max_length[180]'],
+                'transporter_identifier'  => ['label' => 'Identificación del transportista', 'rules' => 'permit_empty|max_length[30]'],
+                'vehicle_plate'           => ['label' => 'Placa', 'rules' => 'permit_empty|max_length[20]'],
+                'origin_place'            => ['label' => 'Partida', 'rules' => 'permit_empty|max_length[180]'],
+                'destination_name'        => ['label' => 'Destinatario', 'rules' => 'permit_empty|max_length[180]'],
+                'destination_identifier'  => ['label' => 'Identificación del destinatario', 'rules' => 'permit_empty|max_length[30]'],
+                'destination_address'     => ['label' => 'Dirección de destino', 'rules' => 'permit_empty|max_length[300]'],
+                'route_description'       => ['label' => 'Ruta', 'rules' => 'permit_empty|max_length[300]'],
+                'related_document_number' => ['label' => 'Documento relacionado', 'rules' => 'permit_empty|max_length[100]'],
+                'dispatch_description'    => ['label' => 'Descripción de la guía', 'rules' => 'permit_empty|max_length[2000]'],
+            ];
         }
 
         return $rules;
@@ -215,6 +264,21 @@ final class MovementController extends BaseController
             'received_by_identification'    => $this->request->getPost('received_by_identification'),
             'received_by_position'          => $this->request->getPost('received_by_position'),
             'received_by_area_name'         => $this->request->getPost('received_by_area_name'),
+            'authorization_number'          => $type === 'EXIT' ? $this->request->getPost('authorization_number') : null,
+            'start_date'                    => $type === 'EXIT' ? $this->request->getPost('start_date') : null,
+            'end_date'                      => $type === 'EXIT' ? $this->request->getPost('end_date') : null,
+            'issuer_name'                   => $type === 'EXIT' ? $this->request->getPost('issuer_name') : null,
+            'issuer_tax_identifier'         => $type === 'EXIT' ? $this->request->getPost('issuer_tax_identifier') : null,
+            'transporter_name'              => $type === 'EXIT' ? $this->request->getPost('transporter_name') : null,
+            'transporter_identifier'        => $type === 'EXIT' ? $this->request->getPost('transporter_identifier') : null,
+            'vehicle_plate'                 => $type === 'EXIT' ? $this->request->getPost('vehicle_plate') : null,
+            'origin_place'                  => $type === 'EXIT' ? $this->request->getPost('origin_place') : null,
+            'destination_name'              => $type === 'EXIT' ? $this->request->getPost('destination_name') : null,
+            'destination_identifier'        => $type === 'EXIT' ? $this->request->getPost('destination_identifier') : null,
+            'destination_address'           => $type === 'EXIT' ? $this->request->getPost('destination_address') : null,
+            'route_description'             => $type === 'EXIT' ? $this->request->getPost('route_description') : null,
+            'related_document_number'       => $type === 'EXIT' ? $this->request->getPost('related_document_number') : null,
+            'dispatch_description'          => $type === 'EXIT' ? $this->request->getPost('dispatch_description') : null,
         ];
     }
 
@@ -223,6 +287,7 @@ final class MovementController extends BaseController
     {
         $materialIds = (array) $this->request->getPost('material_id');
         $quantities = (array) $this->request->getPost('quantity');
+        $requestedQuantities = (array) $this->request->getPost('requested_quantity');
         $costs = (array) $this->request->getPost('unit_cost');
         $reasons = (array) $this->request->getPost('no_cost_reason');
         $items = [];
@@ -233,6 +298,7 @@ final class MovementController extends BaseController
             $items[] = [
                 'material_id'   => $materialId,
                 'quantity'      => $quantities[$index] ?? '',
+                'requested_quantity' => $withCost ? null : ($requestedQuantities[$index] ?? ''),
                 'unit_cost'     => $withCost ? ($costs[$index] ?? null) : null,
                 'no_cost_reason'=> $withCost ? ($reasons[$index] ?? null) : null,
             ];

@@ -64,4 +64,15 @@ final class CatalogRulesTest extends CIUnitTestCase
 
         (new CatalogStateService())->toggle('unknown', 1, 1);
     }
+
+    public function testNegativeStockHasServiceLockingAndDatabaseConstraint(): void
+    {
+        $service = file_get_contents(APPPATH . 'Services/InventoryMovementService.php');
+        $migration = file_get_contents(APPPATH . 'Database/Migrations/2026-07-20-000002_CreateCatalogTables.php');
+
+        $this->assertIsString($service);
+        $this->assertIsString($migration);
+        $this->assertStringContainsString('FOR UPDATE', $service);
+        $this->assertStringContainsString('chk_inventory_stock_nonnegative CHECK (quantity >= 0)', $migration);
+    }
 }
