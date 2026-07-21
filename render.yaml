@@ -47,12 +47,14 @@ services:
       - key: email_protocol
         value: smtp
       - key: email_SMTPHost
-        sync: false
+        value: smtp.gmail.com
       - key: email_SMTPUser
         sync: false
       - key: email_SMTPPass
         sync: false
       - key: email_SMTPPort
-        value: 2525
+        value: 587
       - key: email_SMTPCrypto
         value: tls
+      - key: email_SMTPTimeout
+        value: 10

@@ -17,7 +17,10 @@ Variables obligatorias:
 
 - `DATABASE_URL`: URL pooler de Neon con `sslmode=require`.
 - `storage_bucket`, `storage_region`, `storage_endpoint`, `storage_accessKey` y `storage_secretKey`: almacenamiento S3-compatible privado.
-- `email_fromEmail`, `email_SMTPHost`, `email_SMTPUser` y `email_SMTPPass`: proveedor SMTP. El puerto configurado inicialmente es `2525` y debe ajustarse al proveedor.
+- `email_fromEmail`: cuenta remitente completa, por ejemplo `inventario@gmail.com`.
+- `email_SMTPUser`: la misma cuenta Gmail completa.
+- `email_SMTPPass`: contraseña de aplicación de Google de 16 caracteres, nunca la contraseña normal de la cuenta.
+- Gmail usa `smtp.gmail.com`, puerto `587` y `TLS`, ya declarados en `render.yaml`. Los destinatarios pueden pertenecer a Gmail, Outlook o un dominio institucional válido.
 - `encryption_key`: Render la genera automáticamente. No debe reutilizarse entre entornos.
 
 Variables opcionales:

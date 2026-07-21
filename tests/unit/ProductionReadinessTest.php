@@ -29,7 +29,20 @@ final class ProductionReadinessTest extends CIUnitTestCase
         $this->assertStringContainsString('autoDeployTrigger: checksPass', $blueprint);
         $this->assertStringContainsString('healthCheckPath: /health', $blueprint);
         $this->assertStringContainsString("- key: DATABASE_URL\n        sync: false", $blueprint);
+        $this->assertStringContainsString("- key: email_SMTPHost\n        value: smtp.gmail.com", $blueprint);
+        $this->assertStringContainsString("- key: email_SMTPPort\n        value: 587", $blueprint);
         $this->assertStringNotContainsString('postgresql://', $blueprint);
+    }
+
+    public function testProductionCheckRequiresAuthenticatedSmtp(): void
+    {
+        $check = file_get_contents($this->projectRoot() . 'ops/check-production-env.php');
+
+        $this->assertIsString($check);
+        $this->assertStringContainsString("'email_SMTPUser'", $check);
+        $this->assertStringContainsString("'email_SMTPPass'", $check);
+        $this->assertStringContainsString("email_protocol=smtp", $check);
+        $this->assertStringContainsString("email_SMTPPort válido", $check);
     }
 
     public function testCiUsesReadOnlyPermissionsAndAvoidsPullRequestTarget(): void
