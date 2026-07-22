@@ -22,6 +22,11 @@ $routes->post('logout', '\CodeIgniter\Shield\Controllers\LoginController::logout
     'filter' => 'session',
 ]);
 
+$routes->get('sesion/actividad', 'SessionActivityController::touch', [
+    'as'     => 'session-activity',
+    'filter' => ['session', 'active-user'],
+]);
+
 $routes->get('mi-cuenta/contrasena', 'Account\PasswordController::edit', [
     'as'     => 'account-password',
     'filter' => ['session', 'active-user'],

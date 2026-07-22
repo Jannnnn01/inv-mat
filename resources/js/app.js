@@ -1,5 +1,69 @@
 const bootstrap = window.bootstrap ?? {};
 
+const sessionActivityUrl = document.body.dataset.sessionActivityUrl;
+const sessionLoginUrl = document.body.dataset.sessionLoginUrl;
+const sessionIdleSeconds = Number.parseInt(document.body.dataset.sessionIdleSeconds ?? '', 10);
+
+if (sessionActivityUrl && sessionLoginUrl && Number.isFinite(sessionIdleSeconds) && sessionIdleSeconds > 0) {
+    const idleLimit = sessionIdleSeconds * 1000;
+    const logoutForm = document.querySelector('[data-session-logout-form]');
+    let lastActivityAt = Date.now();
+    let heartbeatInFlight = false;
+    let logoutStarted = false;
+
+    const recordActivity = () => {
+        lastActivityAt = Date.now();
+    };
+
+    ['keydown', 'pointerdown', 'scroll', 'touchstart'].forEach((eventName) => {
+        window.addEventListener(eventName, recordActivity, { passive: true });
+    });
+
+    const closeExpiredSession = () => {
+        if (logoutStarted) {
+            return;
+        }
+        logoutStarted = true;
+
+        if (logoutForm instanceof HTMLFormElement) {
+            logoutForm.requestSubmit();
+            return;
+        }
+
+        window.location.assign(sessionLoginUrl);
+    };
+
+    const keepActiveSession = async () => {
+        if (Date.now() - lastActivityAt >= idleLimit) {
+            closeExpiredSession();
+            return;
+        }
+
+        if (document.visibilityState !== 'visible' || heartbeatInFlight) {
+            return;
+        }
+
+        heartbeatInFlight = true;
+        try {
+            const response = await fetch(sessionActivityUrl, {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { Accept: 'application/json' },
+            });
+            if (!response.ok || response.redirected) {
+                window.location.assign(sessionLoginUrl);
+            }
+        } catch {
+            // A temporary network failure must not discard unsaved form data.
+        } finally {
+            heartbeatInFlight = false;
+        }
+    };
+
+    window.setInterval(keepActiveSession, 60_000);
+}
+
 const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
 const collapsedClass = 'app-sidebar-collapsed';
 const storageKey = 'inventory-sidebar-collapsed';

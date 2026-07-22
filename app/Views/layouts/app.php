@@ -82,7 +82,12 @@ $navSections = [
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/brand/inventory-mark.svg?v=2') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/build/app.css') ?>">
 </head>
-<body class="app-layout bg-body-tertiary">
+<body
+    class="app-layout bg-body-tertiary"
+    data-session-idle-seconds="300"
+    data-session-activity-url="<?= url_to('session-activity') ?>"
+    data-session-login-url="<?= url_to('login') ?>"
+>
 <a class="app-skip-link" href="#main-content">Saltar al contenido principal</a>
 <div class="app-shell">
     <aside class="offcanvas-lg offcanvas-start app-sidebar" tabindex="-1" id="appSidebar" aria-labelledby="appSidebarLabel">
@@ -186,7 +191,7 @@ $navSections = [
                     <p class="app-page-title mb-0"><?= esc($pageTitle) ?></p>
                 </div>
             </div>
-            <form method="post" action="<?= url_to('logout') ?>" class="m-0" data-loading-form>
+            <form method="post" action="<?= url_to('logout') ?>" class="m-0" data-loading-form data-session-logout-form>
                 <?= csrf_field() ?>
                 <button class="btn btn-outline-primary app-logout-button" type="submit">
                     <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
