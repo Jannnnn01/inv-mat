@@ -117,7 +117,7 @@ final class ReportService
                  CROSS JOIN warehouses w
                   LEFT JOIN inventory_stocks s ON s.material_id = m.id AND s.warehouse_id = w.id
                   LEFT JOIN (
-                    SELECT warehouse_id, material_id, SUM(quantity_remaining) AS reserved_quantity
+                    SELECT warehouse_id, material_id, SUM(remaining_quantity) AS reserved_quantity
                       FROM inventory_reservations WHERE status = 'ACTIVE'
                      GROUP BY warehouse_id, material_id
                   ) r ON r.material_id = m.id AND r.warehouse_id = w.id
@@ -156,7 +156,7 @@ final class ReportService
                  CROSS JOIN warehouses w
                   LEFT JOIN inventory_stocks s ON s.material_id = m.id AND s.warehouse_id = w.id
                   LEFT JOIN (
-                    SELECT warehouse_id, material_id, SUM(quantity_remaining) AS reserved_quantity
+                    SELECT warehouse_id, material_id, SUM(remaining_quantity) AS reserved_quantity
                       FROM inventory_reservations WHERE status = 'ACTIVE'
                      GROUP BY warehouse_id, material_id
                   ) r ON r.material_id = m.id AND r.warehouse_id = w.id

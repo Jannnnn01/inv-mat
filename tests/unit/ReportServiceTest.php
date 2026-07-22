@@ -8,6 +8,15 @@ use CodeIgniter\Test\CIUnitTestCase;
  */
 final class ReportServiceTest extends CIUnitTestCase
 {
+    public function testStockReportsUseTheReservationColumnCreatedByTheMigration(): void
+    {
+        $source = file_get_contents(APPPATH . 'Services/ReportService.php');
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString('SUM(remaining_quantity)', $source);
+        $this->assertStringNotContainsString('quantity_remaining', $source);
+    }
+
     public function testInitialReportCatalogIsComplete(): void
     {
         $definitions = (new ReportService())->definitions();
